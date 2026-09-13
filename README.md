@@ -25,3 +25,13 @@ OneDev는 Git 원격으로만 사용합니다. OneDev API·PR 연동, AI 인계 
 - [첫 실행 계획: Git 변경 장부](docs/superpowers/plans/2026-09-13-git-ledger.md): 파일별 구현·검증 순서
 
 전체 구현은 A~F로 분리합니다. 첫 계획은 외부 패키지 없이 Git 커밋 장부를 확인하는 기능이며 제품 전체 구현 완료를 의미하지 않습니다.
+
+## Git 변경 장부 CLI
+
+첫 수직 기능은 로컬 저장소의 특정 커밋과 첫 부모 간 변경을 JSON으로 출력합니다.
+
+```powershell
+npm run scan -- C:\path\to\repository HEAD
+```
+
+출력 계약은 `schemaVersion: "1.0"`입니다. 현재는 커밋의 파일 단위 변경만 수집하며 모든 변경을 `explicitly_unexplained`로 표시합니다. 작업 트리 분석, 코드 관계 분석, LLM 설명, DB와 웹 화면은 아직 구현 범위에 포함되지 않았습니다. 이 명령은 대상 저장소의 checkout과 index를 변경하지 않습니다.
