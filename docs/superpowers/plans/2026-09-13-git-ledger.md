@@ -1,6 +1,8 @@
 # Git 변경 장부 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+**실행 상태:** 2026-09-13 완료. 전체 제품 중 단계 A만 구현됨.
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 등록한 로컬 Git 저장소의 특정 커밋에 포함된 파일과 첫 부모 대비 변경 목록을 읽어 JSON 장부로 출력한다.
 
@@ -41,9 +43,9 @@
 
 **Interfaces:** git(repo,args) → Promise<Buffer>; resolveCommit(repo,ref) → Promise<string>; makeRepo() → Promise<{path,run,cleanup}>. run(args)는 fixture 안에서만 명령을 실행한다.
 
-- [ ] package.json에 {"private":true,"type":"module","scripts":{"test":"node --test tests/*.test.mjs","scan":"node src/cli/scan.mjs"}}를 작성한다.
-- [ ] tests/helpers/repository.mjs에 mkdtemp로 OS temp 아래 임시 폴더를 만들고 git init, git -c user.name=Fixture -c user.email=fixture@example.invalid commit 방식으로 fixture 커밋을 만드는 도우미를 작성한다. cleanup은 생성한 정확한 임시 경로만 재귀 삭제한다. 실제 사용자 저장소는 fixture로 사용하지 않는다.
-- [ ] 다음 회귀 테스트를 작성한다.
+- [x] package.json에 {"private":true,"type":"module","scripts":{"test":"node --test tests/*.test.mjs","scan":"node src/cli/scan.mjs"}}를 작성한다.
+- [x] tests/helpers/repository.mjs에 mkdtemp로 OS temp 아래 임시 폴더를 만들고 git init, git -c user.name=Fixture -c user.email=fixture@example.invalid commit 방식으로 fixture 커밋을 만드는 도우미를 작성한다. cleanup은 생성한 정확한 임시 경로만 재귀 삭제한다. 실제 사용자 저장소는 fixture로 사용하지 않는다.
+- [x] 다음 회귀 테스트를 작성한다.
 
 ```js
 import test from 'node:test';
@@ -63,8 +65,8 @@ test('ref를 고정하며 옵션처럼 보이는 입력을 거부한다', async 
 });
 ```
 
-- [ ] node --test tests/git.test.mjs를 실행해 미구현 import 실패를 확인한다.
-- [ ] 실행 경계를 아래 동작으로 구현한다.
+- [x] node --test tests/git.test.mjs를 실행해 미구현 import 실패를 확인한다.
+- [x] 실행 경계를 아래 동작으로 구현한다.
 
 ```js
 import {execFile} from 'node:child_process';
@@ -87,8 +89,8 @@ export async function resolveCommit(repo, ref) {
 }
 ```
 
-- [ ] 테스트를 통과시키고 존재하지 않는 저장소·출력 상한 실패가 정상 목록으로 변환되지 않는 테스트를 추가한다.
-- [ ] git add package.json src/modules/repository/git.mjs tests/helper* tests/git.test.mjs 후 git commit -m "feat: add read-only Git command boundary"를 실행한다.
+- [x] 테스트를 통과시키고 존재하지 않는 저장소·출력 상한 실패가 정상 목록으로 변환되지 않는 테스트를 추가한다.
+- [x] git add package.json src/modules/repository/git.mjs tests/helper* tests/git.test.mjs 후 git commit -m "feat: add read-only Git command boundary"를 실행한다.
 
 ## Task 2: tree·변경 raw 파서
 
@@ -96,7 +98,7 @@ export async function resolveCommit(repo, ref) {
 
 **Interfaces:** parseTree(raw:Buffer) → TreeEntry[]; parseChanges(raw:Buffer) → ChangedEntry[]. TreeEntry와 ChangedEntry 필드는 상세 구현 설계 5장을 따른다.
 
-- [ ] 탭이 포함된 경로를 첫 탭에서만 나누는 테스트를 작성한다.
+- [x] 탭이 포함된 경로를 첫 탭에서만 나누는 테스트를 작성한다.
 
 ```js
 import test from 'node:test';
@@ -115,8 +117,8 @@ test('rename은 이전과 새 경로를 별도로 읽는다', () => {
 });
 ```
 
-- [ ] node --test tests/inventory.test.mjs를 실행해 실패를 확인한다.
-- [ ] parseTree는 NUL로 record를 나누고 첫 TAB 이전의 mode/type/OID와 이후 path를 파싱한다. strict UTF-8 디코더를 적용하며 실패 시 PATH_ENCODING_UNSUPPORTED로 종료한다. 단계 A는 미지원 경로를 손실 변환한 성공 결과를 만들지 않는다.
+- [x] node --test tests/inventory.test.mjs를 실행해 실패를 확인한다.
+- [x] parseTree는 NUL로 record를 나누고 첫 TAB 이전의 mode/type/OID와 이후 path를 파싱한다. strict UTF-8 디코더를 적용하며 실패 시 PATH_ENCODING_UNSUPPORTED로 종료한다. 단계 A는 미지원 경로를 손실 변환한 성공 결과를 만들지 않는다.
 
 ```js
 const decoder = new TextDecoder('utf-8', {fatal:true});
@@ -130,7 +132,7 @@ export function parseTree(raw) {
 }
 ```
 
-- [ ] parseChanges는 NUL token cursor를 사용한다. header의 status 첫 글자가 R/C면 path 두 개, 그 밖에는 한 개를 소비한다. A는 oldPath/oldOid=null, D는 newPath/newOid=null, M/T는 양쪽 path 동일, R/C는 각 경로를 보관한다. 잘못된 header·누락 token은 INVALID_DIFF_RECORD로 실패시킨다.
+- [x] parseChanges는 NUL token cursor를 사용한다. header의 status 첫 글자가 R/C면 path 두 개, 그 밖에는 한 개를 소비한다. A는 oldPath/oldOid=null, D는 newPath/newOid=null, M/T는 양쪽 path 동일, R/C는 각 경로를 보관한다. 잘못된 header·누락 token은 INVALID_DIFF_RECORD로 실패시킨다.
 
 ```js
 const width = status[0] === 'R' || status[0] === 'C' ? 2 : 1;
@@ -139,8 +141,8 @@ if (paths.length !== width || paths.some(p => !p)) throw new Error('INVALID_DIFF
 cursor += width;
 ```
 
-- [ ] A/D/M/T, 경로 개행, 빈 출력, 잘린 rename, 잘못된 UTF-8 테스트를 추가하고 node --test tests/inventory.test.mjs를 통과시킨다.
-- [ ] 두 파일을 stage하고 git commit -m "feat: parse Git tree and raw changes"를 실행한다.
+- [x] A/D/M/T, 경로 개행, 빈 출력, 잘린 rename, 잘못된 UTF-8 테스트를 추가하고 node --test tests/inventory.test.mjs를 통과시킨다.
+- [x] 두 파일을 stage하고 git commit -m "feat: parse Git tree and raw changes"를 실행한다.
 
 ## Task 3: commit 변경 장부
 
@@ -148,7 +150,7 @@ cursor += width;
 
 **Interfaces:** scanCommit(repo,ref) → Promise<{schemaVersion,targetOid,baseOid,files,changes,counts}>. changes에는 state='explicitly_unexplained', reason='pending_analysis'가 붙는다.
 
-- [ ] root commit에 파일 두 개를 추가한 fixture, 두 번째 커밋에서 하나 삭제·하나 수정하는 fixture로 counts와 경로를 검증하는 테스트를 작성한다. source 코드와 package script가 실행되지 않는지 marker 파일 부재로 확인한다.
+- [x] root commit에 파일 두 개를 추가한 fixture, 두 번째 커밋에서 하나 삭제·하나 수정하는 fixture로 counts와 경로를 검증하는 테스트를 작성한다. source 코드와 package script가 실행되지 않는지 marker 파일 부재로 확인한다.
 
 ```js
 import test from 'node:test';
@@ -171,8 +173,8 @@ test('root 변경은 모두 미설명 상태로 기록한다', async t => {
   assert.equal(result.changes[0].newPath, 'a.ts');
 });
 ```
-- [ ] node --test tests/scan.test.mjs로 실패를 확인한다.
-- [ ] 아래 Git 호출 흐름으로 구현한다.
+- [x] node --test tests/scan.test.mjs로 실패를 확인한다.
+- [x] 아래 Git 호출 흐름으로 구현한다.
 
 ```js
 const targetOid = await resolveCommit(repo, ref);
@@ -193,9 +195,9 @@ return {schemaVersion:'1.0', targetOid, baseOid, files, changes,
   counts:{files:files.length, changes:changes.length, unexplained:changes.length}};
 ```
 
-- [ ] 빈 커밋은 changes=0, root는 baseOid=null, merge는 첫 부모 비교인지 실제 Git fixture로 검증한다.
-- [ ] 분석 전에 만든 미커밋 파일 내용과 index bytes를 분석 후 비교해 변화가 없음을 검증한다. 작업 트리의 새 파일이 커밋 files에 나타나지 않는지도 확인한다.
-- [ ] node --test tests/scan.test.mjs를 통과시킨 뒤 git commit -m "feat: emit commit change ledger"로 관련 두 파일을 커밋한다.
+- [x] 빈 커밋은 changes=0, root는 baseOid=null, merge는 첫 부모 비교인지 실제 Git fixture로 검증한다.
+- [x] 분석 전에 만든 미커밋 파일 내용과 index bytes를 분석 후 비교해 변화가 없음을 검증한다. 작업 트리의 새 파일이 커밋 files에 나타나지 않는지도 확인한다.
+- [x] node --test tests/scan.test.mjs를 통과시킨 뒤 git commit -m "feat: emit commit change ledger"로 관련 두 파일을 커밋한다.
 
 ## Task 4: CLI와 첫 기능 인수
 
@@ -203,7 +205,7 @@ return {schemaVersion:'1.0', targetOid, baseOid, files, changes,
 
 **Interfaces:** node src/cli/scan.mjs <repo-path> [ref]. 성공 stdout은 JSON만, 실패 stderr는 오류 코드·메시지, exit code는 1이다.
 
-- [ ] 자식 프로세스로 CLI를 실행하는 테스트를 작성한다. 성공 JSON, 누락 경로 오류, 잘못된 ref의 비정상 종료, 원본 파일 보존을 확인한다.
+- [x] 자식 프로세스로 CLI를 실행하는 테스트를 작성한다. 성공 JSON, 누락 경로 오류, 잘못된 ref의 비정상 종료, 원본 파일 보존을 확인한다.
 
 ```js
 import test from 'node:test';
@@ -220,8 +222,8 @@ test('인자 없는 CLI는 JSON 성공을 출력하지 않는다', async () => {
   });
 });
 ```
-- [ ] node --test tests/cli.test.mjs로 실패를 확인한다.
-- [ ] 다음 CLI를 작성하고 내부 에러에서 인증정보·전체 환경을 출력하지 않는다.
+- [x] node --test tests/cli.test.mjs로 실패를 확인한다.
+- [x] 다음 CLI를 작성하고 내부 에러에서 인증정보·전체 환경을 출력하지 않는다.
 
 ```js
 import {scanCommit} from '../modules/repository/scan.mjs';
@@ -236,9 +238,9 @@ try {
 }
 ```
 
-- [ ] README에 실행 명령, schemaVersion=1.0, explained가 아직 없다는 점, commit-only 범위를 기록한다.
-- [ ] node --test tests/*.test.mjs를 실행해 모두 통과하는지 확인하고 git diff --check를 실행한다.
-- [ ] git commit -m "feat: expose local commit ledger CLI"로 CLI·테스트·README를 커밋한다.
+- [x] README에 실행 명령, schemaVersion=1.0, explained가 아직 없다는 점, commit-only 범위를 기록한다.
+- [x] node --test tests/*.test.mjs를 실행해 모두 통과하는지 확인하고 git diff --check를 실행한다.
+- [x] git commit -m "feat: expose local commit ledger CLI"로 CLI·테스트·README를 커밋한다.
 
 ## 자체 검토와 후속 범위
 
