@@ -40,3 +40,7 @@ v0.1의 PR·작업 카드·외부 인계·검증 결과 중심 구조를 Git 변
 - 표본 precision·recall·설명 충족률을 별도 측정하며 전체 관계 완전성을 주장하지 않는다.
 
 SCIP은 데이터 모델 참고이며 필수 서비스가 아니다. GraphDB는 계속 보류한다. 외부 인계·OneDev 업무 API·테스트/배포 기록 수집은 추가하지 않는다.
+
+## 2026-09-13: 상세 구현 설계 추가
+
+[상세 구현 설계서](implementation-design.md)에 모듈·데이터·실행 계약을 작성했다. 첫 수직 기능은 외부 패키지 없는 Git commit 장부 CLI이며, 이후 working_tree·DB·관계 분석·LLM·웹 순서로 확장한다. 단계 A는 ESM JavaScript로 Git 수집을 검증하고 B에서 TypeScript 기반 전체 실행 환경을 고정한다. 구현 코드는 아직 작성하지 않았다.
