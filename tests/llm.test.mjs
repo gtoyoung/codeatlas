@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createLlmClient, validateCitedAnswer } from '../src/modules/llm/client.mjs';
+import { buildAnswerSections, createLlmClient, validateCitedAnswer } from '../src/modules/llm/client.mjs';
 
 test('API 설정이 없으면 외부 호출 없이 근거 기반 로컬 요약을 반환한다', async () => {
   const client = createLlmClient({}, () => { throw new Error('must not call'); });
@@ -28,6 +28,40 @@ test('모든 인용이 허용된 답변만 supported로 표시한다', () => {
     validateCitedAnswer({ answer: '페이지가 변경됐다.', citations: ['e1'] }, new Set(['e1'])),
     { answer: '페이지가 변경됐다.', citations: ['e1'], support: 'supported' },
   );
+});
+
+test('구조화된 답변은 섹션과 허용된 인용만 보존한다', () => {
+  const sections = buildAnswerSections({
+    answer: '변경 목적을 확인했습니다.',
+    sections: [
+      { type: 'recorded', title: '기록된 맥락', text: '커밋 메시지에 적힌 내용입니다.', citations: ['context-1', 'invented'] },
+      { type: 'code', title: '코드 근거', text: 'API 호출 코드가 추가되었습니다.', citations: ['relation-1'] },
+    ],
+  }, new Set(['context-1', 'relation-1']));
+
+  assert.deepEqual(sections, [
+    { key: 'recorded', label: '기록된 맥락', text: '커밋 메시지에 적힌 내용입니다.', citations: ['context-1'] },
+    { key: 'code', label: '코드 근거', text: 'API 호출 코드가 추가되었습니다.', citations: ['relation-1'] },
+  ]);
+});
+
+test('구조화된 항목 목록은 화면용 목록으로 보존한다', () => {
+  const sections = buildAnswerSections({
+    answer: '결론',
+    sections: [{ type: 'code', title: '코드 근거', items: ['첫 번째 근거', '두 번째 근거'], citations: ['relation-1'] }],
+  }, new Set(['relation-1']));
+
+  assert.deepEqual(sections[0].items, ['첫 번째 근거', '두 번째 근거']);
+  assert.equal(sections[0].text, '첫 번째 근거\n두 번째 근거');
+});
+
+test('JSON을 지키지 않은 긴 답변도 근거 영역 표식으로 나눈다', () => {
+  const sections = buildAnswerSections({
+    answer: '기록(커밋 메시지) 근거: 자동화 파이프라인을 만들었습니다. 코드 근거: src/main.py에서 API 호출을 확인했습니다. 확인 필요: 실제 실행 결과는 알 수 없습니다.',
+  }, new Set());
+
+  assert.deepEqual(sections.map((section) => section.label), ['기록된 맥락', '코드 근거', '확인 필요']);
+  assert.match(sections[1].text, /src\/main\.py/);
 });
 
 test('OpenAI 호환 URL·모델·키를 받아 chat completions 형식으로 호출한다', async () => {

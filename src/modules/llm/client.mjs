@@ -15,11 +15,28 @@ function localSummary({ changes = [], graph = { edges: [] }, context = null }) {
 }
 
 function parseJsonText(text) {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { answer: text, citations: [] };
+  const source = typeof text === 'string' ? text.trim() : '';
+  const candidates = [
+    source.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''),
+    source,
+  ];
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      // Try the next common model output shape.
+    }
   }
+  const start = source.indexOf('{');
+  const end = source.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    try {
+      return JSON.parse(source.slice(start, end + 1));
+    } catch {
+      // Keep the original response as an unstructured answer.
+    }
+  }
+  return { answer: source, citations: [] };
 }
 
 async function readResponseDetail(response) {
@@ -57,7 +74,12 @@ async function requestLlm(fetchImpl, url, init) {
 
 export function validateCitedAnswer(value, allowedIds) {
   const answer = typeof value?.answer === 'string' ? value.answer.trim() : '';
-  const requested = Array.isArray(value?.citations) ? value.citations : [];
+  const sectionCitations = Array.isArray(value?.sections)
+    ? value.sections.flatMap((section) => Array.isArray(section?.citations) ? section.citations : [])
+    : [];
+  const requested = Array.isArray(value?.citations) && value.citations.length > 0
+    ? value.citations
+    : sectionCitations;
   const citations = requested.filter((id) => typeof id === 'string' && allowedIds.has(id));
   const allValid = requested.length > 0 && requested.length === citations.length;
   return {
@@ -65,6 +87,87 @@ export function validateCitedAnswer(value, allowedIds) {
     citations: allValid ? citations : [],
     support: allValid ? 'supported' : 'unsupported',
   };
+}
+
+const sectionLabels = {
+  conclusion: '결론',
+  recorded: '기록된 맥락',
+  code: '코드 근거',
+  uncertainty: '확인 필요',
+  next: '다음 확인',
+  answer: '답변',
+};
+
+function sectionKey(value) {
+  const raw = String(value ?? '').toLowerCase();
+  if (raw.includes('record') || raw.includes('context') || raw.includes('기록')) return 'recorded';
+  if (raw.includes('code') || raw.includes('relation') || raw.includes('코드')) return 'code';
+  if (raw.includes('uncertain') || raw.includes('risk') || raw.includes('불확실') || raw.includes('확인 필요')) return 'uncertainty';
+  if (raw.includes('next') || raw.includes('다음')) return 'next';
+  if (raw.includes('conclusion') || raw.includes('결론')) return 'conclusion';
+  return 'answer';
+}
+
+function sectionText(value) {
+  if (typeof value === 'string') return value.trim();
+  if (Array.isArray(value)) return value.map(sectionText).filter(Boolean).join('\n');
+  if (value && typeof value === 'object') {
+    return sectionText(value.text ?? value.content ?? value.summary ?? value.answer ?? value.items ?? '');
+  }
+  return '';
+}
+
+function sectionItems(value) {
+  if (!Array.isArray(value?.items)) return [];
+  return value.items.map(sectionText).filter(Boolean);
+}
+
+function validSectionCitations(value, allowedIds) {
+  const requested = Array.isArray(value?.citations) ? value.citations : [];
+  return requested.filter((id) => typeof id === 'string' && allowedIds.has(id));
+}
+
+function narrativeSections(text) {
+  const source = String(text ?? '').trim();
+  if (!source) return [];
+  const marker = /(기록(?:\([^\n:：]*\))?\s*근거|코드\s*근거|불확실성|확인\s*필요|다음\s*확인|결론|답변)\s*[:：]/gi;
+  const matches = [...source.matchAll(marker)];
+  if (matches.length === 0) {
+    return [{ key: 'answer', label: sectionLabels.answer, text: source, citations: [] }];
+  }
+  const sections = [];
+  const prefix = source.slice(0, matches[0].index).trim();
+  if (prefix) sections.push({ key: 'conclusion', label: sectionLabels.conclusion, text: prefix, citations: [] });
+  for (const [index, match] of matches.entries()) {
+    const start = match.index + match[0].length;
+    const end = matches[index + 1]?.index ?? source.length;
+    const textPart = source.slice(start, end).trim();
+    if (!textPart) continue;
+    const key = sectionKey(match[1]);
+    sections.push({ key, label: sectionLabels[key], text: textPart, citations: [] });
+  }
+  return sections;
+}
+
+export function buildAnswerSections(value, allowedIds) {
+  const rawSections = Array.isArray(value?.sections)
+    ? value.sections
+    : value?.sections && typeof value.sections === 'object'
+      ? Object.entries(value.sections).map(([type, section]) => ({ type, ...(section && typeof section === 'object' ? section : { text: section }) }))
+      : [];
+  const sections = rawSections.map((section) => {
+    const key = sectionKey(section?.type ?? section?.key ?? section?.title);
+    const items = sectionItems(section);
+    const text = sectionText(section);
+    return {
+      key,
+      label: typeof section?.title === 'string' && section.title.trim() ? section.title.trim() : sectionLabels[key],
+      text,
+      citations: validSectionCitations(section, allowedIds),
+      ...(items.length > 0 ? { items } : {}),
+    };
+  }).filter((section) => section.text);
+  return sections.length > 0 ? sections : narrativeSections(value?.answer ?? value?.conclusion ?? '');
 }
 
 async function callOpenAI(config, fetchImpl, prompt) {
@@ -174,22 +277,44 @@ export function createLlmClient(config = process.env, fetchImpl = fetch) {
 
     async answer({ question, evidence, context = null }) {
       if (!provider) {
+        const citations = evidence.map((item) => item.id).slice(0, 5);
         return {
           answer: `${context?.type === 'pull_request' ? '선택한 PR' : context?.type === 'commit' ? '선택한 커밋' : '현재 스냅샷'}의 기록과 ${evidence.length}개 근거를 확인하세요. 외부 LLM이 설정되지 않아 기록 밖의 의도는 추정하지 않았습니다.`,
-          citations: evidence.map((item) => item.id).slice(0, 5),
+          citations,
           support: evidence.length > 0 ? 'supported' : 'unsupported',
+          sections: [
+            {
+              key: 'conclusion',
+              label: '결론',
+              text: `${evidence.length}개 근거를 확인했습니다.`,
+              citations,
+            },
+            {
+              key: 'uncertainty',
+              label: '확인 필요',
+              text: '외부 LLM이 설정되지 않아 기록 밖의 작성 의도와 실행 결과는 판단하지 않았습니다.',
+              citations: [],
+            },
+          ],
           mode: 'deterministic',
         };
       }
       const prompt = [
-        '질문에 한국어로 답하고 JSON만 반환하세요: {"answer":"...","citations":["evidence-id"]}.',
-        '주어진 근거 ID만 인용하고 근거 밖 내용은 알 수 없다고 답하세요.',
+        '질문에 한국어로 답하고 JSON만 반환하세요.',
+        '형식: {"answer":"한 문장 결론","sections":[{"type":"recorded","title":"기록된 맥락","items":["커밋·PR 기록에서 확인되는 사실"],"citations":["evidence-id"]},{"type":"code","title":"코드 근거","items":["소스와 정적 관계에서 확인되는 사실"],"citations":["evidence-id"]},{"type":"uncertainty","title":"확인 필요","items":["근거가 없어 단정할 수 없는 내용"],"citations":[]},{"type":"next","title":"다음 확인","items":["사용자가 확인할 다음 항목"],"citations":[]}],"citations":["evidence-id"]}.',
+        '기록된 맥락과 코드 근거를 섞지 말고 섹션별로 분리하세요. 비어 있는 섹션은 생략해도 됩니다.',
+        '주어진 근거 ID만 인용하고 근거 밖 내용은 알 수 없다고 답하세요. 작성자의 의도는 기록에 적힌 표현과 코드 근거를 구분해 설명하세요.',
         `질문: ${question}`,
         `선택한 커밋·PR 맥락: ${JSON.stringify(context ?? {}).slice(0, 30_000)}`,
         `근거: ${JSON.stringify(evidence).slice(0, 80_000)}`,
       ].join('\n');
       const parsed = parseJsonText(await call(prompt));
-      return { ...validateCitedAnswer(parsed, new Set(evidence.map((item) => item.id))), mode: provider };
+      const allowedIds = new Set(evidence.map((item) => item.id));
+      return {
+        ...validateCitedAnswer(parsed, allowedIds),
+        sections: buildAnswerSections(parsed, allowedIds),
+        mode: provider,
+      };
     },
   };
 }

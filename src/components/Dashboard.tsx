@@ -76,6 +76,35 @@ function shortOid(value: string | null) {
 type CommitSelection = { oid: string };
 type PullRequestSelection = { id: number | string | null; number: number | null };
 
+type AnswerSection = {
+  key: string;
+  label: string;
+  text: string;
+  citations: string[];
+  items?: string[];
+};
+
+type Answer = {
+  answer: string;
+  citations: string[];
+  support: string;
+  mode: string;
+  sections?: AnswerSection[];
+};
+
+function supportLabel(value: string) {
+  if (value === 'supported') return '근거 확인됨';
+  if (value === 'partial') return '일부 근거 확인';
+  return '검증 필요';
+}
+
+function modeLabel(value: string) {
+  if (value === 'openai-compatible') return 'OpenAI 호환 모델';
+  if (value === 'openai') return 'OpenAI';
+  if (value === 'anthropic') return 'Anthropic';
+  return '로컬 정형 답변';
+}
+
 export default function Dashboard({ suggestedPath }: { suggestedPath: string }) {
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -83,7 +112,7 @@ export default function Dashboard({ suggestedPath }: { suggestedPath: string }) 
   const [path, setPath] = useState(suggestedPath);
   const [mode, setMode] = useState<'working_tree' | 'commit'>('working_tree');
   const [question, setQuestion] = useState('작성자는 왜 이 커밋이나 PR을 만들었나? 기록과 코드 근거를 나눠 설명해줘.');
-  const [answer, setAnswer] = useState<{ answer: string; citations: string[]; support: string; mode: string } | null>(null);
+  const [answer, setAnswer] = useState<Answer | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [workspace, setWorkspace] = useState<'overview' | 'commits' | 'pulls'>('overview');
@@ -381,10 +410,36 @@ export default function Dashboard({ suggestedPath }: { suggestedPath: string }) 
                   <button disabled={busy || question.trim().length < 2}>근거로 답변</button>
                 </form>
                 {answer && (
-                  <div className="answer-card">
-                    <div><b>{answer.support}</b><span>{answer.mode}</span></div>
-                    <p>{answer.answer}</p>
-                    <small>근거: {answer.citations.length ? answer.citations.join(', ') : '확인된 인용 없음'}</small>
+                  <div className={`answer-card answer-${answer.support}`}>
+                    <div className="answer-card-head">
+                      <div className="answer-state"><span /> <b>{supportLabel(answer.support)}</b></div>
+                      <span className="answer-engine">{modeLabel(answer.mode)}</span>
+                      <span className="answer-count">{answer.citations.length}개 인용</span>
+                    </div>
+                    <div className="answer-sections">
+                      {(answer.sections?.length ? answer.sections : [{ key: 'answer', label: '답변', text: answer.answer, citations: answer.citations }]).map((section, index) => (
+                        <section className="answer-section" data-kind={section.key} key={`${section.key}-${index}`}>
+                          <div className="answer-section-head">
+                            <h4>{section.label}</h4>
+                            {section.citations.length > 0 && <span>{section.citations.length}개 근거</span>}
+                          </div>
+                          {section.items?.length ? (
+                            <ul>{section.items.map((item, itemIndex) => <li key={`${section.key}-${itemIndex}`}>{item}</li>)}</ul>
+                          ) : <p>{section.text}</p>}
+                          {section.citations.length > 0 && (
+                            <div className="answer-citations">
+                              {section.citations.map((citation) => <code key={citation}>{citation}</code>)}
+                            </div>
+                          )}
+                        </section>
+                      ))}
+                    </div>
+                    <div className="answer-footer">
+                      <span>검증된 인용</span>
+                      {answer.citations.length > 0
+                        ? answer.citations.map((citation) => <code key={citation}>{citation}</code>)
+                        : <em>확인된 인용 없음 · 답변을 사실로 확정하지 마세요.</em>}
+                    </div>
                   </div>
                 )}
               </article>
