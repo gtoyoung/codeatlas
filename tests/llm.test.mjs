@@ -50,6 +50,27 @@ test('OpenAI 호환 URL·모델·키를 받아 chat completions 형식으로 호
   assert.equal(JSON.parse(request.init.body).model, 'qwen-max');
 });
 
+test('LLM 공급자 오류에 응답 본문과 상태를 안전하게 포함한다', async () => {
+  const fakeFetch = async () => ({
+    ok: false,
+    status: 400,
+    json: async () => ({ error: { type: 'MissingSessionID', message: "OpenCode's free tier is only available in OpenCode" } }),
+  });
+  const client = createLlmClient({
+    LLM_BASE_URL: 'https://opencode.ai/zen/v1',
+    LLM_API_KEY: 'compatible-key',
+    LLM_MODEL: 'big-pickle',
+  }, fakeFetch);
+
+  await assert.rejects(
+    client.summarize({ changes: [], graph: { edges: [] } }),
+    (error) => error.code === 'LLM_REQUEST_FAILED'
+      && error.status === 400
+      && /free tier/.test(error.message)
+      && !error.message.includes('compatible-key'),
+  );
+});
+
 test('커밋·PR 맥락을 LLM 질문 프롬프트에 함께 고정한다', async () => {
   let prompt = '';
   const fakeFetch = async (_url, init) => {

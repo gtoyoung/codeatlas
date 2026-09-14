@@ -22,6 +22,36 @@ function parseJsonText(text) {
   }
 }
 
+async function readResponseDetail(response) {
+  try {
+    const source = typeof response.clone === 'function' ? response.clone() : response;
+    const body = await source.json();
+    const detail = body?.error?.message ?? body?.message ?? body?.error?.type;
+    return typeof detail === 'string' ? detail.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 240) : '';
+  } catch {
+    return '';
+  }
+}
+
+async function requestLlm(fetchImpl, url, init) {
+  let response;
+  try {
+    response = await fetchImpl(url, init);
+  } catch {
+    const error = new Error('LLM_NETWORK');
+    error.code = 'LLM_NETWORK';
+    throw error;
+  }
+  if (!response.ok) {
+    const detail = await readResponseDetail(response);
+    const error = new Error(`LLM_HTTP_${response.status ?? 'ERROR'}${detail ? `: ${detail}` : ''}`);
+    error.code = 'LLM_REQUEST_FAILED';
+    error.status = Number(response.status) || 502;
+    throw error;
+  }
+  return response;
+}
+
 export function validateCitedAnswer(value, allowedIds) {
   const answer = typeof value?.answer === 'string' ? value.answer.trim() : '';
   const requested = Array.isArray(value?.citations) ? value.citations : [];
@@ -35,7 +65,7 @@ export function validateCitedAnswer(value, allowedIds) {
 }
 
 async function callOpenAI(config, fetchImpl, prompt) {
-  const response = await fetchImpl('https://api.openai.com/v1/responses', {
+  const response = await requestLlm(fetchImpl, 'https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${config.OPENAI_API_KEY}`,
@@ -43,7 +73,6 @@ async function callOpenAI(config, fetchImpl, prompt) {
     },
     body: JSON.stringify({ model: config.OPENAI_MODEL, input: prompt, store: false }),
   });
-  if (!response.ok) throw new Error(`LLM_HTTP_${response.status ?? 'ERROR'}`);
   const body = await response.json();
   return body.output_text ?? body.output?.flatMap((item) => item.content ?? [])
     .find((item) => item.type === 'output_text')?.text ?? '';
@@ -71,7 +100,7 @@ function chatText(body) {
 }
 
 async function callOpenAICompatible(config, fetchImpl, prompt) {
-  const response = await fetchImpl(compatibleEndpoint(config.__LLM_BASE_URL), {
+  const response = await requestLlm(fetchImpl, compatibleEndpoint(config.__LLM_BASE_URL), {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${config.__LLM_API_KEY}`,
@@ -83,12 +112,11 @@ async function callOpenAICompatible(config, fetchImpl, prompt) {
       temperature: 0,
     }),
   });
-  if (!response.ok) throw new Error(`LLM_HTTP_${response.status ?? 'ERROR'}`);
   return chatText(await response.json());
 }
 
 async function callAnthropic(config, fetchImpl, prompt) {
-  const response = await fetchImpl('https://api.anthropic.com/v1/messages', {
+  const response = await requestLlm(fetchImpl, 'https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${config.ANTHROPIC_API_KEY}`,
@@ -101,7 +129,6 @@ async function callAnthropic(config, fetchImpl, prompt) {
       messages: [{ role: 'user', content: prompt }],
     }),
   });
-  if (!response.ok) throw new Error(`LLM_HTTP_${response.status ?? 'ERROR'}`);
   const body = await response.json();
   return body.content?.find((item) => item.type === 'text')?.text ?? '';
 }
