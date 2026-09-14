@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import { createStore } from '../src/modules/store/database.mjs';
 
@@ -35,4 +38,13 @@ test('같은 로컬 경로를 중복 등록하지 않는다', async (t) => {
 
   assert.equal(first.id, second.id);
   assert.equal((await store.listRepositories()).length, 1);
+});
+
+test('부모 폴더가 없는 로컬 데이터 경로를 초기화한다', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'ai-dev-handoff-db-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const store = await createStore(join(root, 'nested', 'postgres'));
+  t.after(() => store.close());
+
+  assert.deepEqual(await store.listRepositories(), []);
 });

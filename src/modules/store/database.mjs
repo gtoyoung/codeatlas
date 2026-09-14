@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { PGlite } from '@electric-sql/pglite';
@@ -32,6 +33,9 @@ function scanFrom(row) {
 }
 
 export async function createStore(dataDir = 'memory://') {
+  if (!dataDir.includes('://')) {
+    await mkdir(dirname(resolve(dataDir)), { recursive: true });
+  }
   const db = await PGlite.create(dataDir);
   const migration = await readFile(fileURLToPath(migrationUrl), 'utf8');
   await db.exec(migration);

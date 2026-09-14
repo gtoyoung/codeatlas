@@ -49,14 +49,22 @@ function resolveImport(fromPath, specifier, paths) {
 }
 
 export function analyzeSources({ snapshotId, files }) {
-  const textFiles = files.filter((file) => typeof file.content === 'string');
-  const paths = new Set(textFiles.map((file) => normalize(file.path)));
+  const sourceFiles = files.filter((file) => (
+    typeof file.content === 'string'
+    && sourceExtensions.includes(posix.extname(normalize(file.path)).toLowerCase())
+  ));
+  const paths = new Set(sourceFiles.map((file) => normalize(file.path)));
   const nodes = [];
   const edges = [];
-  const issues = [];
+  const issues = files
+    .filter((file) => !sourceFiles.includes(file))
+    .map((file) => ({
+      path: normalize(file.path),
+      reason: typeof file.content === 'string' ? 'unsupported_file_type' : (file.reason ?? 'non_text_file'),
+    }));
   const routeNodes = new Map();
 
-  for (const file of textFiles) {
+  for (const file of sourceFiles) {
     const path = normalize(file.path);
     nodes.push({ id: `${snapshotId}:file:${path}`, kind: 'file', label: path, path });
     const route = routeFor(path);
@@ -76,7 +84,7 @@ export function analyzeSources({ snapshotId, files }) {
     }
   }
 
-  for (const file of textFiles) {
+  for (const file of sourceFiles) {
     const path = normalize(file.path);
     const source = ts.createSourceFile(path, file.content, ts.ScriptTarget.Latest, true);
     const diagnostics = source.parseDiagnostics ?? [];
@@ -157,9 +165,9 @@ export function analyzeSources({ snapshotId, files }) {
     edges,
     coverage: {
       totalFiles: files.length,
-      indexedFiles: textFiles.length - new Set(issues.filter((issue) => issue.reason === 'parse_diagnostic').map((issue) => issue.path)).size,
-      partialFiles: new Set(issues.map((issue) => issue.path)).size,
-      excludedFiles: files.length - textFiles.length,
+      indexedFiles: sourceFiles.length - new Set(issues.filter((issue) => issue.reason === 'parse_diagnostic').map((issue) => issue.path)).size,
+      partialFiles: new Set(issues.filter((issue) => paths.has(issue.path)).map((issue) => issue.path)).size,
+      excludedFiles: files.length - sourceFiles.length,
       failedFiles: 0,
       issues,
     },
