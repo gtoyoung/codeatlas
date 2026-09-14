@@ -189,6 +189,8 @@ Next.js 규칙은 supports(version, fileLayout), extract(snapshot) 계약을 가
 
 ## 10. LLM·근거 처리
 
+LLM 연결은 서버 환경 변수로만 구성한다. `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`이 모두 있으면 OpenAI 호환 `POST {LLM_BASE_URL}/chat/completions`를 사용한다. 동일한 설정은 `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`로 지정할 수 있다. 커스텀 URL이 없고 OpenAI 키·모델만 있으면 공식 Responses API를 사용하며, Anthropic 설정은 호환 설정이 없을 때 Messages API로 선택한다. 키는 브라우저·DB·로그에 기록하지 않는다.
+
 ```ts
 interface LlmPort {
   generateClaims(input: EvidenceBundle, signal: AbortSignal): Promise<ClaimDraft[]>;

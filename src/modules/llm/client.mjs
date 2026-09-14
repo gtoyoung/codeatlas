@@ -49,6 +49,44 @@ async function callOpenAI(config, fetchImpl, prompt) {
     .find((item) => item.type === 'output_text')?.text ?? '';
 }
 
+function firstValue(config, ...keys) {
+  for (const key of keys) {
+    const value = config[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return '';
+}
+
+function compatibleEndpoint(baseUrl) {
+  const normalized = baseUrl.replace(/\/+$/, '');
+  if (normalized.endsWith('/chat/completions')) return normalized;
+  return `${normalized}/chat/completions`;
+}
+
+function chatText(body) {
+  const content = body?.choices?.[0]?.message?.content;
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) return content.map((item) => item?.text ?? '').join('');
+  return '';
+}
+
+async function callOpenAICompatible(config, fetchImpl, prompt) {
+  const response = await fetchImpl(compatibleEndpoint(config.__LLM_BASE_URL), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.__LLM_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: config.__LLM_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0,
+    }),
+  });
+  if (!response.ok) throw new Error(`LLM_HTTP_${response.status ?? 'ERROR'}`);
+  return chatText(await response.json());
+}
+
 async function callAnthropic(config, fetchImpl, prompt) {
   const response = await fetchImpl('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -69,13 +107,22 @@ async function callAnthropic(config, fetchImpl, prompt) {
 }
 
 export function createLlmClient(config = process.env, fetchImpl = fetch) {
-  const provider = config.OPENAI_API_KEY && config.OPENAI_MODEL
-    ? 'openai'
-    : config.ANTHROPIC_API_KEY && config.ANTHROPIC_MODEL
-      ? 'anthropic'
-      : null;
+  const compatible = {
+    __LLM_BASE_URL: firstValue(config, 'LLM_BASE_URL', 'OPENAI_BASE_URL'),
+    __LLM_API_KEY: firstValue(config, 'LLM_API_KEY', 'OPENAI_API_KEY'),
+    __LLM_MODEL: firstValue(config, 'LLM_MODEL', 'OPENAI_MODEL'),
+  };
+  const hasCompatible = compatible.__LLM_BASE_URL && compatible.__LLM_API_KEY && compatible.__LLM_MODEL;
+  const provider = hasCompatible
+    ? 'openai-compatible'
+    : config.OPENAI_API_KEY && config.OPENAI_MODEL
+      ? 'openai'
+      : config.ANTHROPIC_API_KEY && config.ANTHROPIC_MODEL
+        ? 'anthropic'
+        : null;
 
   async function call(prompt) {
+    if (provider === 'openai-compatible') return callOpenAICompatible(compatible, fetchImpl, prompt);
     if (provider === 'openai') return callOpenAI(config, fetchImpl, prompt);
     if (provider === 'anthropic') return callAnthropic(config, fetchImpl, prompt);
     return null;

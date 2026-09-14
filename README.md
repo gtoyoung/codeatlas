@@ -50,6 +50,6 @@ npm run dev
 
 PR 분석 시 OneDev의 `base/head` ref가 로컬에 없으면 `AI_HANDOFF_GIT_CACHE_DIR`의 bare 저장소에 필요한 ref만 가져옵니다. 원본 checkout·index·작업 트리는 수정하지 않습니다.
 
-LLM은 선택 설정입니다. `.env.local`에 `OPENAI_API_KEY`와 `OPENAI_MODEL`, 또는 `ANTHROPIC_API_KEY`와 `ANTHROPIC_MODEL`을 함께 설정합니다. 키가 없으면 외부 호출 없이 Git·코드 근거에 기반한 정형 요약을 사용합니다. 개발 도구 로그인이나 구독을 API 키로 간주하지 않습니다.
+LLM은 선택 설정입니다. OpenAI 호환 서버를 사용하려면 `.env.local`에 `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`을 설정합니다. 이 값은 `/chat/completions`로 호출됩니다. 같은 설정은 `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`로도 지정할 수 있습니다. `OPENAI_BASE_URL`을 비워두고 기존 OpenAI 키·모델만 설정하면 공식 Responses API를 사용합니다. 아무 키도 없으면 외부 호출 없이 Git·코드 근거에 기반한 정형 요약을 사용합니다. 키는 브라우저나 DB에 저장하지 않습니다.
 
 현재 정적 분석은 직접 import, Next.js App/Pages Router 규약, 파일 수준 `use server`, 문자열 리터럴 `fetch()` 관계를 지원합니다. 동적 호출과 실행 결과는 확정하지 않고 분석 범위에 표시합니다.

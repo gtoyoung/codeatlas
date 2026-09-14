@@ -30,6 +30,26 @@ test('모든 인용이 허용된 답변만 supported로 표시한다', () => {
   );
 });
 
+test('OpenAI 호환 URL·모델·키를 받아 chat completions 형식으로 호출한다', async () => {
+  let request = null;
+  const fakeFetch = async (url, init) => {
+    request = { url, init };
+    return { ok: true, json: async () => ({ choices: [{ message: { content: JSON.stringify({ answer: '호환 응답', citations: ['e1'] }) } }] }) };
+  };
+  const client = createLlmClient({
+    LLM_BASE_URL: 'https://llm.example.test/v1/',
+    LLM_API_KEY: 'compatible-key',
+    LLM_MODEL: 'qwen-max',
+  }, fakeFetch);
+  const result = await client.answer({ question: '무엇이 바뀌었나?', evidence: [{ id: 'e1', text: 'changed' }] });
+
+  assert.equal(client.provider, 'openai-compatible');
+  assert.equal(result.support, 'supported');
+  assert.equal(request.url, 'https://llm.example.test/v1/chat/completions');
+  assert.equal(request.init.headers.Authorization, 'Bearer compatible-key');
+  assert.equal(JSON.parse(request.init.body).model, 'qwen-max');
+});
+
 test('커밋·PR 맥락을 LLM 질문 프롬프트에 함께 고정한다', async () => {
   let prompt = '';
   const fakeFetch = async (_url, init) => {
