@@ -33,6 +33,9 @@ test('두 Git 커밋 사이의 PR 범위를 checkout 없이 스냅샷으로 읽�
   assert.equal(snapshot.targetOid, head);
   assert.equal(snapshot.files.find((file) => file.path === 'new.ts').state, 'indexed');
   assert.deepEqual(snapshot.changes.map((change) => change.newPath ?? change.oldPath).sort(), ['app.ts', 'new.ts']);
+  assert.match(snapshot.changes.find((change) => change.newPath === 'app.ts').diff.patch, /-export const value = 1;/);
+  assert.match(snapshot.changes.find((change) => change.newPath === 'app.ts').diff.patch, /\+export const value = 2;/);
+  assert.match(snapshot.changes.find((change) => change.newPath === 'new.ts').diff.patch, /\+export const added = true;/);
   assert.equal(snapshot.metadata.number, 12);
   assert.equal((await repo.run(['symbolic-ref', '--short', 'HEAD'])).stdout.trim(), before);
 });

@@ -20,6 +20,14 @@ type ImpactGroup = {
   relations: ImpactRelation[];
 };
 
+type ChangeDiff = {
+  status: 'available' | 'binary' | 'unavailable';
+  patch: string | null;
+  additions: number;
+  deletions: number;
+  truncated?: boolean;
+};
+
 type Scan = {
   id: string;
   kind: 'commit' | 'working_tree' | 'pull_request';
@@ -28,7 +36,7 @@ type Scan = {
   createdAt: string;
   summary: { title: string; overview: string; mode: string; cautions?: string[]; relationCount?: number };
   report: {
-    changes: Array<{ status: string; oldPath: string | null; newPath: string | null }>;
+    changes: Array<{ status: string; oldPath: string | null; newPath: string | null; diff?: ChangeDiff | null }>;
     files: Array<{ path: string; state?: string; reason?: string | null }>;
     metadata?: {
       type?: 'commit' | 'pull_request';
@@ -339,7 +347,16 @@ export default function Dashboard({ suggestedPath }: { suggestedPath: string }) 
                     {scan.report.changes.slice(0, 30).map((change, index) => (
                       <div className="change-row" key={`${change.status}-${change.newPath}-${index}`}>
                         <b data-status={change.status[0]}>{change.status}</b>
-                        <span>{change.newPath ?? change.oldPath}</span>
+                        <span className="change-path">{change.newPath ?? change.oldPath}</span>
+                        {change.diff && (
+                          <details className="change-diff">
+                            <summary>
+                              <span>{change.diff.status === 'available' ? '실제 코드 변경 보기' : change.diff.status === 'binary' ? '바이너리 변경' : '라인 diff 없음'}</span>
+                              {change.diff.status === 'available' && <small>+{change.diff.additions} · -{change.diff.deletions}</small>}
+                            </summary>
+                            {change.diff.patch && <pre>{change.diff.patch}</pre>}
+                          </details>
+                        )}
                       </div>
                     ))}
                   </div>

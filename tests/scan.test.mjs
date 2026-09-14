@@ -56,6 +56,12 @@ test('첫 부모 대비 수정과 삭제를 기록한다', async (t) => {
   assert.equal(byStatus.get('M').newPath, 'keep.ts');
   assert.equal(byStatus.get('D').oldPath, 'remove.ts');
   assert.equal(byStatus.get('D').newPath, null);
+  assert.equal(byStatus.get('M').diff.status, 'available');
+  assert.match(byStatus.get('M').diff.patch, /-export const value = 1;/);
+  assert.match(byStatus.get('M').diff.patch, /\+export const value = 2;/);
+  assert.equal(byStatus.get('M').diff.additions, 1);
+  assert.equal(byStatus.get('M').diff.deletions, 1);
+  assert.match(byStatus.get('D').diff.patch, /-remove me/);
 });
 
 test('빈 커밋과 merge 커밋은 첫 부모 기준으로 비교한다', async (t) => {

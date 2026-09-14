@@ -9,7 +9,15 @@ export function buildEvidence(report, graph) {
     id: `change-${index + 1}`,
     kind: 'git_change',
     path: change.newPath ?? change.oldPath,
-    text: `${change.status}: ${change.oldPath ?? '∅'} → ${change.newPath ?? '∅'}`,
+    text: [
+      `${change.status}: ${change.oldPath ?? '∅'} → ${change.newPath ?? '∅'}`,
+      change.diff?.status === 'available'
+        ? `추가 ${change.diff.additions}줄 · 삭제 ${change.diff.deletions}줄\n${change.diff.patch}`
+        : change.diff?.status === 'binary'
+          ? '텍스트로 표시할 수 없는 바이너리 변경입니다.'
+          : '라인 단위 diff를 확보하지 못했습니다.',
+    ].join('\n'),
+    diff: change.diff ?? null,
   }));
   const relations = graph.edges.map((edge, index) => ({
     id: `relation-${index + 1}`,

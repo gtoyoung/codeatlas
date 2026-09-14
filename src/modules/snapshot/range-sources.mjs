@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { git, resolveCommit } from '../repository/git.mjs';
+import { attachDiffs } from '../repository/diff.mjs';
 import { parseChanges, parseTree } from '../repository/inventory.mjs';
 
 const decoder = new TextDecoder('utf-8', { fatal: true });
@@ -74,11 +75,12 @@ export async function loadRangeSnapshot(repo, {
     ]),
   ]);
   const files = await loadFiles(repo, treeOutput);
-  const changes = parseChanges(diffOutput).map((entry) => ({
+  const rawChanges = parseChanges(diffOutput).map((entry) => ({
     ...entry,
     state: 'explicitly_unexplained',
     reason: 'pending_analysis',
   }));
+  const changes = await attachDiffs(repo, rawChanges, { baseOid, targetOid });
   const manifestHash = hash(JSON.stringify({
     baseOid,
     targetOid,

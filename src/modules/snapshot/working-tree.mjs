@@ -3,6 +3,7 @@ import { lstat, readFile } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 
 import { git, resolveCommit } from '../repository/git.mjs';
+import { attachDiffs } from '../repository/diff.mjs';
 import { parseChanges } from '../repository/inventory.mjs';
 
 const decoder = new TextDecoder('utf-8', { fatal: true });
@@ -88,13 +89,18 @@ async function capture(repo, includeUntracked) {
     files: files.map(({ path, contentHash, state }) => ({ path, contentHash, state })),
   }));
 
+  const changes = await attachDiffs(repo, [...trackedChanges, ...untrackedChanges], {
+    baseOid,
+    workingTreeFiles: files,
+  });
+
   return {
     schemaVersion: '1.0',
     kind: 'working_tree',
     baseOid,
     manifestHash,
     files,
-    changes: [...trackedChanges, ...untrackedChanges],
+    changes,
     coverage: {
       totalFiles: files.length,
       indexedFiles: files.filter((file) => file.state === 'indexed').length,

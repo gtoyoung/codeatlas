@@ -241,6 +241,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .change-row b { color: var(--signal); }
 .change-row b[data-status="D"] { color: var(--ember); }
 .change-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.change-row .change-path { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.change-diff { grid-column: 2; min-width: 0; border-top: 1px solid #edf1f7; }
+.change-diff summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 0 3px; cursor: pointer; color: var(--signal); font-size: 11px; list-style-position: inside; }
+.change-diff summary small { color: var(--muted); font: 10px "Cascadia Mono", monospace; }
+.change-diff pre { max-height: 260px; margin: 6px 0 3px; overflow: auto; padding: 10px; border: 1px solid #dce4f0; border-radius: 5px; background: #111c2e; color: #d6dfed; font: 11px/1.55 "Cascadia Mono", monospace; white-space: pre; }
 .coverage-panel { padding-bottom: 14px; }
 .coverage-bar { height: 8px; background: #e4e9f1; margin: 22px 16px 13px; overflow: hidden; border-radius: 8px; }
 .coverage-bar span { display: block; height: 100%; background: var(--mint); }

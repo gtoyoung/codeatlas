@@ -1,4 +1,5 @@
 import { git, resolveCommit } from './git.mjs';
+import { attachDiffs } from './diff.mjs';
 import { parseChanges, parseTree } from './inventory.mjs';
 
 export async function scanCommit(repo, ref) {
@@ -21,11 +22,12 @@ export async function scanCommit(repo, ref) {
     : await git(repo, [...diffArgs, '--root', targetOid]);
 
   const files = parseTree(treeOutput);
-  const changes = parseChanges(changesOutput).map((entry) => ({
+  const rawChanges = parseChanges(changesOutput).map((entry) => ({
     ...entry,
     state: 'explicitly_unexplained',
     reason: 'pending_analysis',
   }));
+  const changes = await attachDiffs(repo, rawChanges, { baseOid, targetOid });
 
   return {
     schemaVersion: '1.0',

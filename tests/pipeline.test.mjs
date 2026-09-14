@@ -42,3 +42,28 @@ test('커밋·PR 기록을 코드 관계와 분리된 근거 항목으로 보존
   assert.ok(evidence.some((item) => item.kind === 'recorded_statement' && /Retry safely/.test(item.text)));
   assert.ok(evidence.some((item) => item.kind === 'recorded_statement' && /atomic/.test(item.text)));
 });
+
+test('변경 근거에 실제 추가·삭제 코드 diff를 포함한다', () => {
+  const evidence = buildEvidence(
+    {
+      changes: [{
+        status: 'M',
+        oldPath: 'src/value.ts',
+        newPath: 'src/value.ts',
+        diff: {
+          status: 'available',
+          patch: '@@ -1 +1 @@\n-export const value = 1;\n+export const value = 2;',
+          additions: 1,
+          deletions: 1,
+        },
+      }],
+      metadata: null,
+    },
+    { edges: [] },
+  );
+
+  const change = evidence.find((item) => item.kind === 'git_change');
+  assert.match(change.text, /-export const value = 1/);
+  assert.match(change.text, /\+export const value = 2/);
+  assert.equal(change.diff.additions, 1);
+});

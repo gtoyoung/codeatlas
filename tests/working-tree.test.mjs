@@ -25,6 +25,9 @@ test('작업 트리의 수정·미추적 소스를 일관된 스냅샷으로 수
   assert.deepEqual(snapshot.files.map((file) => file.path).sort(), ['new.ts', 'tracked.ts']);
   assert.equal(snapshot.changes.find((entry) => entry.newPath === 'tracked.ts').status[0], 'M');
   assert.equal(snapshot.changes.find((entry) => entry.newPath === 'new.ts').status, '?');
+  assert.match(snapshot.changes.find((entry) => entry.newPath === 'tracked.ts').diff.patch, /-export const value = 1;/);
+  assert.match(snapshot.changes.find((entry) => entry.newPath === 'tracked.ts').diff.patch, /\+export const value = 2;/);
+  assert.match(snapshot.changes.find((entry) => entry.newPath === 'new.ts').diff.patch, /\+export const added = true;/);
   assert.equal((await repo.run(['status', '--porcelain=v1', '-z'])).stdout, before);
   assert.equal(await readFile(join(repo.path, 'tracked.ts'), 'utf8'), 'export const value = 2;\n');
 });
