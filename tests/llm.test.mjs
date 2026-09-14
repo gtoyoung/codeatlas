@@ -84,7 +84,7 @@ test('OpenAI 호환 URL·모델·키를 받아 chat completions 형식으로 호
   assert.equal(JSON.parse(request.init.body).model, 'qwen-max');
 });
 
-test('LLM 공급자 오류에 응답 본문과 상태를 안전하게 포함한다', async () => {
+test('LLM 공급자 오류가 있어도 정적 분석용 요약은 저장 가능한 형태로 폴백한다', async () => {
   const fakeFetch = async () => ({
     ok: false,
     status: 400,
@@ -96,13 +96,11 @@ test('LLM 공급자 오류에 응답 본문과 상태를 안전하게 포함한�
     LLM_MODEL: 'big-pickle',
   }, fakeFetch);
 
-  await assert.rejects(
-    client.summarize({ changes: [], graph: { edges: [] } }),
-    (error) => error.code === 'LLM_REQUEST_FAILED'
-      && error.status === 400
-      && /free tier/.test(error.message)
-      && !error.message.includes('compatible-key'),
-  );
+  const result = await client.summarize({ changes: [], graph: { edges: [] } });
+  assert.equal(result.mode, 'deterministic');
+  assert.match(result.cautions.join(' '), /LLM/);
+  assert.match(result.cautions.join(' '), /free tier/);
+  assert.doesNotMatch(result.cautions.join(' '), /compatible-key/);
 });
 
 test('OpenRouter 공급자 메타데이터의 rate limit 원인을 보존한다', async () => {
@@ -121,7 +119,7 @@ test('OpenRouter 공급자 메타데이터의 rate limit 원인을 보존한다'
   }, fakeFetch);
 
   await assert.rejects(
-    client.summarize({ changes: [], graph: { edges: [] } }),
+    client.answer({ question: '무엇이 바뀌었나?', evidence: [{ id: 'change-1', text: 'changed' }] }),
     (error) => error.code === 'LLM_REQUEST_FAILED'
       && error.status === 429
       && /temporarily rate-limited upstream/.test(error.message),

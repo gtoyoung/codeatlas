@@ -133,6 +133,7 @@ export default function Dashboard({ suggestedPath }: { suggestedPath: string }) 
     scan ? buildImpactList({ changes: scan.report.changes, graph: scan.graph }) as ImpactGroup[] : []
   ), [scan]);
   const impactConnections = impacts.reduce((sum, impact) => sum + impact.relations.length, 0);
+  const hasDiff = Boolean(scan?.report.changes.some((change) => change.diff?.status === 'available' || change.diff?.status === 'binary'));
 
   async function refresh(preferredId?: string) {
     const body = await readJson(await fetch('/api/repositories', { cache: 'no-store' }));
@@ -176,10 +177,11 @@ export default function Dashboard({ suggestedPath }: { suggestedPath: string }) 
       const isPullRequest = scan?.kind === 'pull_request';
       const pullKey = isPullRequest ? (scan?.report.metadata?.id ?? scan?.report.metadata?.number) : null;
       const endpoint = isPullRequest && pullKey ? `/api/repositories/${selected.id}/pull-requests/${pullKey}/scan` : `/api/repositories/${selected.id}/scan`;
+      const ref = scan?.kind === 'commit' && scan.targetOid ? scan.targetOid : selected.defaultRef;
       const body = await readJson(await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(isPullRequest ? {} : { kind: mode, ref: selected.defaultRef }),
+        body: JSON.stringify(isPullRequest ? {} : { kind: mode, ref }),
       }));
       setScan(body.scan);
       await refresh(selected.id);
@@ -318,6 +320,11 @@ export default function Dashboard({ suggestedPath }: { suggestedPath: string }) 
                 </div>
                 <button onClick={rescan} disabled={busy}>다시 분석</button>
               </div>
+              {scan.report.changes.length > 0 && !hasDiff && (
+                <div className="notice-strip diff-notice" role="status">
+                  이 분석 결과는 실제 코드 diff 저장 전의 기록입니다. <button onClick={rescan} disabled={busy}>다시 분석</button>하면 추가·삭제 라인과 파일별 diff를 확인할 수 있습니다.
+                </div>
+              )}
 
               {scan.report.metadata && <article className="intent-card">
                 <div><span className="section-label">RECORDED CONTEXT</span><h3>{scan.report.metadata.type === 'pull_request' ? `PR #${scan.report.metadata.number ?? '?'} · ${scan.report.metadata.title ?? '제목 없음'}` : `커밋 · ${scan.report.metadata.subject ?? '메시지 없음'}`}</h3></div>

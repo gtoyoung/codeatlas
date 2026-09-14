@@ -72,6 +72,13 @@ async function requestLlm(fetchImpl, url, init) {
   return response;
 }
 
+function llmFallbackCaution(error) {
+  const message = error instanceof Error
+    ? error.message.replace(/^LLM_HTTP_\d+\s*:\s*/i, '').trim().slice(0, 240)
+    : '';
+  return `LLM 요약을 만들지 못해 정적 요약을 표시합니다.${message ? ` 공급자 응답: ${message}` : ''}`;
+}
+
 export function validateCitedAnswer(value, allowedIds) {
   const answer = typeof value?.answer === 'string' ? value.answer.trim() : '';
   const sectionCitations = Array.isArray(value?.sections)
@@ -267,12 +274,20 @@ export function createLlmClient(config = process.env, fetchImpl = fetch) {
     async summarize(input) {
       if (!provider) return localSummary(input);
       const fallback = localSummary(input);
-      const text = await call([
-        '아래 Git 변경과 정적 관계만 근거로 짧은 한국어 요약을 작성하세요.',
-        '기록되지 않은 의도와 실행 결과를 사실로 단정하지 마세요.',
-        JSON.stringify(input).slice(0, 60_000),
-      ].join('\n'));
-      return { ...fallback, mode: provider, overview: text || fallback.overview };
+      try {
+        const text = await call([
+          '아래 Git 변경과 정적 관계만 근거로 짧은 한국어 요약을 작성하세요.',
+          '기록되지 않은 의도와 실행 결과를 사실로 단정하지 마세요.',
+          JSON.stringify(input).slice(0, 60_000),
+        ].join('\n'));
+        return { ...fallback, mode: provider, overview: text || fallback.overview };
+      } catch (error) {
+        return {
+          ...fallback,
+          mode: 'deterministic',
+          cautions: [...(fallback.cautions ?? []), llmFallbackCaution(error)],
+        };
+      }
     },
 
     async answer({ question, evidence, context = null }) {
