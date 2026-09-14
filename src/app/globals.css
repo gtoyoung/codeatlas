@@ -303,3 +303,71 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
+
+/* Evidence desk visual system: the page should read as a working control room, not a document. */
+.workbench { padding-top: 24px; }
+.masthead {
+  position: relative;
+  align-items: center;
+  max-width: 1500px;
+  margin-bottom: 18px;
+  padding: 26px 30px 28px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--ink);
+  color: white;
+  overflow: hidden;
+  box-shadow: 0 18px 44px rgba(16, 24, 38, .18);
+}
+.masthead::after {
+  content: "";
+  position: absolute;
+  width: 360px;
+  height: 360px;
+  right: -100px;
+  top: -210px;
+  border: 1px solid rgba(90, 194, 166, .38);
+  border-radius: 50%;
+  box-shadow: 0 0 0 28px rgba(90, 194, 166, .06), 0 0 0 56px rgba(90, 194, 166, .035);
+}
+.masthead > div:first-child { position: relative; z-index: 1; }
+.masthead .eyebrow { color: var(--mint); }
+.masthead h1 { margin-top: 7px; color: white; font-size: clamp(44px, 6vw, 76px); letter-spacing: -.075em; }
+.masthead h1 i { color: var(--mint); }
+.masthead p { margin-top: 10px; color: #b7c4d7; }
+.status-stamp { position: relative; z-index: 1; border-color: #40516e; background: rgba(255,255,255,.08); color: white; }
+.status-stamp span { background: var(--mint); }
+.control-rail { border-radius: 10px; background: #132039; box-shadow: 0 12px 30px rgba(16, 24, 38, .14); }
+.workspace-grid { gap: 22px; }
+.repo-list {
+  min-height: 520px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255,255,255,.66);
+  padding: 18px 12px 12px;
+}
+.repo-list > .section-label { padding: 0 8px; }
+.repo-card { border-radius: 9px; padding: 14px 11px; }
+.repo-card.active { border-color: #a8bde0; box-shadow: 0 10px 26px rgba(36, 59, 98, .1); }
+.analysis-stage { min-width: 0; }
+.workspace-tabs {
+  gap: 6px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255,255,255,.8);
+}
+.workspace-tabs button { flex: 1; border: 0; border-radius: 7px; padding: 12px 14px; color: var(--muted); }
+.workspace-tabs button:hover:not(:disabled) { background: #f0f4fb; }
+.workspace-tabs button.active { border: 0; background: var(--blueprint); color: white; box-shadow: 0 5px 14px rgba(36,59,98,.18); }
+.workspace-tabs button.active span { color: var(--mint); }
+.snapshot-banner { border-radius: 10px 10px 0 0; background: #213c68; }
+.summary-card { border-radius: 0 0 10px 10px; }
+.impact-panel, .changes-panel, .coverage-panel, .evidence-desk { border-radius: 10px; }
+.evidence-desk { box-shadow: 0 14px 30px rgba(16,24,38,.16); }
+
+@media (max-width: 620px) {
+  .masthead { padding: 24px 20px; }
+  .masthead::after { right: -180px; }
+  .repo-list { border-radius: 10px; }
+}
