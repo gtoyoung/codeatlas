@@ -29,3 +29,19 @@ test('모든 인용이 허용된 답변만 supported로 표시한다', () => {
     { answer: '페이지가 변경됐다.', citations: ['e1'], support: 'supported' },
   );
 });
+
+test('커밋·PR 맥락을 LLM 질문 프롬프트에 함께 고정한다', async () => {
+  let prompt = '';
+  const fakeFetch = async (_url, init) => {
+    prompt = JSON.parse(init.body).input;
+    return { ok: true, json: async () => ({ output_text: JSON.stringify({ answer: '기록을 확인했습니다.', citations: ['context-1'] }) }) };
+  };
+  const client = createLlmClient({ OPENAI_API_KEY: 'key', OPENAI_MODEL: 'model' }, fakeFetch);
+  await client.answer({
+    question: '작성자는 왜 이 변경을 했나?',
+    context: { type: 'commit', subject: 'Prevent duplicate requests', body: 'Serialize the update.' },
+    evidence: [{ id: 'context-1', text: 'commit message: Prevent duplicate requests' }],
+  });
+  assert.match(prompt, /Prevent duplicate requests/);
+  assert.match(prompt, /Serialize the update/);
+});

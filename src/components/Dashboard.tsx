@@ -22,7 +22,7 @@ type ImpactGroup = {
 
 type Scan = {
   id: string;
-  kind: 'commit' | 'working_tree';
+  kind: 'commit' | 'working_tree' | 'pull_request';
   targetOid: string | null;
   baseOid: string | null;
   createdAt: string;
@@ -30,6 +30,21 @@ type Scan = {
   report: {
     changes: Array<{ status: string; oldPath: string | null; newPath: string | null }>;
     files: Array<{ path: string; state?: string; reason?: string | null }>;
+    metadata?: {
+      type?: 'commit' | 'pull_request';
+      id?: number | string | null;
+      number?: number | null;
+      title?: string;
+      description?: string;
+      subject?: string;
+      body?: string;
+      author?: { name?: string; email?: string };
+      source?: string | null;
+      target?: string | null;
+      comments?: Array<unknown>;
+      reviews?: Array<unknown>;
+      updates?: Array<unknown>;
+    } | null;
     coverage?: { totalFiles: number; indexedFiles: number; excludedFiles: number };
     evidence?: Array<{ id: string; text: string; path?: string }>;
   };
@@ -58,13 +73,16 @@ function shortOid(value: string | null) {
   return value ? value.slice(0, 9) : 'WORKTREE';
 }
 
+type CommitSelection = { oid: string };
+type PullRequestSelection = { id: number | string | null; number: number | null };
+
 export default function Dashboard({ suggestedPath }: { suggestedPath: string }) {
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [scan, setScan] = useState<Scan | null>(null);
   const [path, setPath] = useState(suggestedPath);
   const [mode, setMode] = useState<'working_tree' | 'commit'>('working_tree');
-  const [question, setQuestion] = useState('이 변경에서 함께 확인해야 할 코드는 어디야?');
+  const [question, setQuestion] = useState('작성자는 왜 이 커밋이나 PR을 만들었나? 기록과 코드 근거를 나눠 설명해줘.');
   const [answer, setAnswer] = useState<{ answer: string; citations: string[]; support: string; mode: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -86,7 +104,7 @@ export default function Dashboard({ suggestedPath }: { suggestedPath: string }) 
     const nextScan = body.repositories.find((repository: Repository) => repository.id === nextId)?.latestScan ?? null;
     setSelectedId(nextId);
     setScan(nextScan);
-    if (nextScan) setMode(nextScan.kind);
+    if (nextScan && nextScan.kind !== 'pull_request') setMode(nextScan.kind);
   }
 
   useEffect(() => {
@@ -118,10 +136,13 @@ export default function Dashboard({ suggestedPath }: { suggestedPath: string }) 
     setError('');
     setAnswer(null);
     try {
-      const body = await readJson(await fetch(`/api/repositories/${selected.id}/scan`, {
+      const isPullRequest = scan?.kind === 'pull_request';
+      const pullKey = isPullRequest ? (scan?.report.metadata?.id ?? scan?.report.metadata?.number) : null;
+      const endpoint = isPullRequest && pullKey ? `/api/repositories/${selected.id}/pull-requests/${pullKey}/scan` : `/api/repositories/${selected.id}/scan`;
+      const body = await readJson(await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind: mode, ref: selected.defaultRef }),
+        body: JSON.stringify(isPullRequest ? {} : { kind: mode, ref: selected.defaultRef }),
       }));
       setScan(body.scan);
       await refresh(selected.id);
@@ -130,6 +151,36 @@ export default function Dashboard({ suggestedPath }: { suggestedPath: string }) 
     } finally {
       setBusy(false);
     }
+  }
+
+  async function analyzeCommit(commit: CommitSelection) {
+    if (!selected) return;
+    setBusy(true); setError(''); setAnswer(null);
+    try {
+      const body = await readJson(await fetch(`/api/repositories/${selected.id}/scan`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: 'commit', ref: commit.oid }),
+      }));
+      setScan(body.scan); setWorkspace('overview');
+      await refresh(selected.id);
+      setScan(body.scan);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : '커밋을 분석하지 못했습니다.'); }
+    finally { setBusy(false); }
+  }
+
+  async function analyzePullRequest(pullRequest: PullRequestSelection) {
+    if (!selected || (pullRequest.id == null && pullRequest.number == null)) return;
+    setBusy(true); setError(''); setAnswer(null);
+    try {
+      const key = pullRequest.id ?? pullRequest.number;
+      const body = await readJson(await fetch(`/api/repositories/${selected.id}/pull-requests/${key}/scan`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}),
+      }));
+      setScan(body.scan); setWorkspace('overview');
+      await refresh(selected.id);
+      setScan(body.scan);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'PR을 분석하지 못했습니다.'); }
+    finally { setBusy(false); }
   }
 
   async function ask(event: FormEvent) {
@@ -154,7 +205,7 @@ export default function Dashboard({ suggestedPath }: { suggestedPath: string }) 
   function chooseRepository(repository: Repository) {
     setSelectedId(repository.id);
     setScan(repository.latestScan);
-    if (repository.latestScan) setMode(repository.latestScan.kind);
+    if (repository.latestScan && repository.latestScan.kind !== 'pull_request') setMode(repository.latestScan.kind);
     setAnswer(null);
   }
 
@@ -215,7 +266,7 @@ export default function Dashboard({ suggestedPath }: { suggestedPath: string }) 
             <button className={workspace === 'commits' ? 'active' : ''} onClick={() => setWorkspace('commits')} disabled={!selected}>커밋 <span>Git</span></button>
             <button className={workspace === 'pulls' ? 'active' : ''} onClick={() => setWorkspace('pulls')} disabled={!selected}>PR <span>OneDev</span></button>
           </nav>
-          {workspace === 'commits' && selected ? <CommitTimeline repositoryId={selected.id} /> : workspace === 'pulls' && selected ? <PullRequestInbox repositoryId={selected.id} /> : workspace === 'overview' && !scan ? (
+          {workspace === 'commits' && selected ? <CommitTimeline repositoryId={selected.id} onAnalyze={analyzeCommit} /> : workspace === 'pulls' && selected ? <PullRequestInbox repositoryId={selected.id} onAnalyze={analyzePullRequest} /> : workspace === 'overview' && !scan ? (
             <div className="welcome-panel">
               <span className="index-mark">A—Z</span>
               <h2>코드의 현재 상태부터<br />정확히 고정합니다.</h2>
@@ -225,11 +276,17 @@ export default function Dashboard({ suggestedPath }: { suggestedPath: string }) 
             <>
               <div className="snapshot-banner">
                 <div>
-                  <span>{scan.kind === 'working_tree' ? 'WORKING TREE' : 'COMMIT'}</span>
+                  <span>{scan.kind === 'working_tree' ? 'WORKING TREE' : scan.kind === 'pull_request' ? 'PULL REQUEST' : 'COMMIT'}</span>
                   <strong>{shortOid(scan.targetOid)}</strong>
                 </div>
                 <button onClick={rescan} disabled={busy}>다시 분석</button>
               </div>
+
+              {scan.report.metadata && <article className="intent-card">
+                <div><span className="section-label">RECORDED CONTEXT</span><h3>{scan.report.metadata.type === 'pull_request' ? `PR #${scan.report.metadata.number ?? '?'} · ${scan.report.metadata.title ?? '제목 없음'}` : `커밋 · ${scan.report.metadata.subject ?? '메시지 없음'}`}</h3></div>
+                <p>{scan.report.metadata.type === 'pull_request' ? (scan.report.metadata.description || 'PR 설명이 없습니다.') : (scan.report.metadata.body || '본문이 없는 커밋입니다.')}</p>
+                <small>기록된 메시지·설명은 작성자의 표현입니다. 실제 의도는 코드 변경과 함께 질문으로 확인하세요.</small>
+              </article>}
 
               <article className="summary-card">
                 <div className="summary-copy">
@@ -317,7 +374,7 @@ export default function Dashboard({ suggestedPath }: { suggestedPath: string }) 
                 <div>
                   <span className="section-label">EVIDENCE DESK</span>
                   <h3>이 코드에 질문하기</h3>
-                  <p>답변은 이 스냅샷의 Git 변경과 확인된 코드 연결만 인용합니다.</p>
+                  <p>커밋 메시지·PR 대화는 기록된 맥락으로, 코드 관계는 정적 근거로 분리해 답합니다.</p>
                 </div>
                 <form onSubmit={ask}>
                   <textarea value={question} onChange={(event) => setQuestion(event.target.value)} />

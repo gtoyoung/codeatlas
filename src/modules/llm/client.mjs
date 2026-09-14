@@ -1,11 +1,14 @@
-function localSummary({ changes = [], graph = { edges: [] } }) {
+function localSummary({ changes = [], graph = { edges: [] }, context = null }) {
   const paths = changes.map((change) => change.newPath ?? change.oldPath).filter(Boolean);
+  const contextTitle = context?.type === 'pull_request'
+    ? `PR #${context.number ?? '?'} · ${context.title || '제목 없음'}`
+    : context?.type === 'commit' ? `커밋 · ${context.subject || '메시지 없음'}` : null;
   return {
     mode: 'deterministic',
-    title: `${changes.length}개 변경 감지`,
+    title: contextTitle ?? `${changes.length}개 변경 감지`,
     overview: paths.length > 0
       ? `${paths.slice(0, 3).join(', ')}${paths.length > 3 ? ' 외' : ''}에서 변경을 확인했습니다.`
-      : '선택한 기준에서 파일 변경이 없습니다.',
+      : contextTitle ? `${contextTitle}의 기록과 선택한 Git 범위에서 파일 변경을 확인했습니다.` : '선택한 기준에서 파일 변경이 없습니다.',
     cautions: ['코드와 Git 정보만 분석했습니다. 실행 결과와 작성자의 실제 의도는 확인하지 않았습니다.'],
     relationCount: graph.edges?.length ?? 0,
   };
@@ -92,10 +95,10 @@ export function createLlmClient(config = process.env, fetchImpl = fetch) {
       return { ...fallback, mode: provider, overview: text || fallback.overview };
     },
 
-    async answer({ question, evidence }) {
+    async answer({ question, evidence, context = null }) {
       if (!provider) {
         return {
-          answer: `현재 제공된 ${evidence.length}개 코드 근거를 확인하세요. 외부 LLM이 설정되지 않아 추론 답변은 생성하지 않았습니다.`,
+          answer: `${context?.type === 'pull_request' ? '선택한 PR' : context?.type === 'commit' ? '선택한 커밋' : '현재 스냅샷'}의 기록과 ${evidence.length}개 근거를 확인하세요. 외부 LLM이 설정되지 않아 기록 밖의 의도는 추정하지 않았습니다.`,
           citations: evidence.map((item) => item.id).slice(0, 5),
           support: evidence.length > 0 ? 'supported' : 'unsupported',
           mode: 'deterministic',
@@ -105,6 +108,7 @@ export function createLlmClient(config = process.env, fetchImpl = fetch) {
         '질문에 한국어로 답하고 JSON만 반환하세요: {"answer":"...","citations":["evidence-id"]}.',
         '주어진 근거 ID만 인용하고 근거 밖 내용은 알 수 없다고 답하세요.',
         `질문: ${question}`,
+        `선택한 커밋·PR 맥락: ${JSON.stringify(context ?? {}).slice(0, 30_000)}`,
         `근거: ${JSON.stringify(evidence).slice(0, 80_000)}`,
       ].join('\n');
       const parsed = parseJsonText(await call(prompt));

@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS repositories (
 CREATE TABLE IF NOT EXISTS scans (
   id UUID PRIMARY KEY,
   repository_id UUID NOT NULL REFERENCES repositories(id) ON DELETE CASCADE,
-  kind TEXT NOT NULL CHECK (kind IN ('commit', 'working_tree')),
+  kind TEXT NOT NULL CHECK (kind IN ('commit', 'working_tree', 'pull_request')),
   target_oid TEXT,
   base_oid TEXT,
   manifest_hash TEXT NOT NULL,

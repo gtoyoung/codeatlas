@@ -167,6 +167,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .commit-detail .panel-head h3, .pr-detail .panel-head h3 { margin: 5px 0 0; font-size: 17px; }
 .commit-detail .panel-head code { color: var(--signal); font: 10px "Cascadia Mono", monospace; }
 .detail-body { padding: 0 16px 18px; }
+.analyze-selection { width: 100%; margin: 12px 0 3px; border: 0; border-radius: 6px; padding: 10px 12px; background: var(--signal); color: white; font-size: 12px; font-weight: 700; text-align: left; }
+.analyze-selection:hover:not(:disabled) { background: #2f63c7; }
 .detail-byline { color: var(--muted); font-size: 12px; }
 .commit-body { padding: 11px 12px; white-space: pre-wrap; border-left: 3px solid var(--line); background: #f8fafe; color: #44536b; font-size: 12px; }
 .detail-label { display: block; margin: 18px 0 8px; color: var(--signal); font: 700 10px "Cascadia Mono", monospace; letter-spacing: .1em; text-transform: uppercase; }
@@ -175,6 +177,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .detail-files b { color: var(--signal); font: 11px "Cascadia Mono", monospace; }
 .detail-files b[data-status="D"] { color: var(--ember); }
 .detail-files code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 11px "Cascadia Mono", monospace; }
+.activity-list { display: grid; gap: 6px; }
+.activity-list > div { display: grid; gap: 5px; padding: 9px 10px; border-left: 3px solid #cdd9ea; background: #f7f9fc; }
+.activity-list b { color: var(--signal); font: 700 10px "Cascadia Mono", monospace; }
+.activity-list span { color: #44536b; font-size: 12px; line-height: 1.45; white-space: pre-wrap; }
 .ref-pills { display: flex; flex-wrap: wrap; gap: 5px; }
 .ref-pills .ref-available { border-color: #a8d8c4; background: #effaf5; color: #267256; }
 .ref-pills .ref-missing { border-color: #e8ccd0; background: #fff7f7; color: #a44732; }
@@ -214,6 +220,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .snapshot-banner button { height: 34px; background: rgba(255,255,255,.12); }
 
 .summary-card { background: white; border: 1px solid var(--line); border-top: 0; padding: clamp(22px, 4vw, 42px); display: grid; grid-template-columns: 1fr auto; gap: 36px; }
+.intent-card { margin-top: 14px; padding: 18px 20px; border: 1px solid #bcd7d0; border-left: 4px solid var(--mint); border-radius: 10px; background: #f4fbf8; }
+.intent-card h3 { margin: 6px 0 0; font: 650 18px Bahnschrift, sans-serif; }
+.intent-card p { margin: 12px 0 8px; color: #355a54; line-height: 1.55; white-space: pre-wrap; font-size: 13px; }
+.intent-card small { color: #5f8179; font-size: 11px; }
 .summary-card h2 { margin: 8px 0; font: 700 clamp(28px, 4vw, 46px)/1 Bahnschrift, sans-serif; letter-spacing: -.035em; }
 .summary-card p { color: var(--muted); margin: 0; max-width: 720px; line-height: 1.6; white-space: pre-wrap; }
 .metric-row { display: grid; grid-template-columns: repeat(2, minmax(90px, 1fr)); border-left: 1px solid var(--line); }

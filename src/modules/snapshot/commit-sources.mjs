@@ -1,4 +1,5 @@
 import { git } from '../repository/git.mjs';
+import { getCommitMetadata } from '../repository/history.mjs';
 import { scanCommit } from '../repository/scan.mjs';
 
 const decoder = new TextDecoder('utf-8', { fatal: true });
@@ -28,6 +29,7 @@ export async function loadCommitSnapshot(repo, ref) {
   return {
     ...ledger,
     kind: 'commit',
+    metadata: await getCommitMetadata(repo, ledger.targetOid),
     manifestHash: ledger.targetOid,
     files,
     coverage: {

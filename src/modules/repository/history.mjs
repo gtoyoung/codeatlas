@@ -1,4 +1,4 @@
-import { git } from './git.mjs';
+import { git, resolveCommit } from './git.mjs';
 import { parseChanges } from './inventory.mjs';
 
 const decoder = new TextDecoder('utf-8', { fatal: false });
@@ -9,8 +9,8 @@ function parseRefs(raw) {
   const values = decoder.decode(raw).split(FIELD);
   const refs = new Map();
   for (let index = 0; index + 1 < values.length; index += 2) {
-    const ref = values[index];
-    const oid = values[index + 1];
+    const ref = values[index].trim();
+    const oid = values[index + 1].trim();
     if (!ref || !/^[a-f0-9]+$/.test(oid)) continue;
     const current = refs.get(oid) ?? [];
     current.push(ref);
@@ -63,9 +63,10 @@ export async function listCommitHistory(repo, { limit = 50, query = '' } = {}) {
   const headOid = headRaw.toString('ascii').trim();
   if (/^[a-f0-9]+$/.test(headOid)) refs.set(headOid, [...(refs.get(headOid) ?? []), 'refs/HEAD']);
   const term = String(query ?? '').trim().toLocaleLowerCase();
-  const candidates = parseLog(logRaw).filter((commit) => (
+  const matched = parseLog(logRaw).filter((commit) => (
     !term || `${commit.subject}\n${commit.body}\n${commit.author.name}`.toLocaleLowerCase().includes(term)
-  )).slice(0, safeLimit);
+  ));
+  const candidates = matched.slice(0, safeLimit);
   const commits = [];
   for (const commit of candidates) {
     commits.push({
@@ -79,8 +80,27 @@ export async function listCommitHistory(repo, { limit = 50, query = '' } = {}) {
   }
   return {
     commits,
-    totalMatched: candidates.length,
+    totalMatched: matched.length,
     complete: shallowRaw.toString('utf8').trim() !== 'true',
-    truncated: parseLog(logRaw).length > candidates.length,
+    truncated: matched.length > candidates.length,
+  };
+}
+
+export async function getCommitMetadata(repo, ref) {
+  const oid = await resolveCommit(repo, ref);
+  const raw = await git(repo, [
+    'show', '-s', '--format=%H%x00%an%x00%ae%x00%aI%x00%cn%x00%ce%x00%cI%x00%s%x00%b', oid,
+  ]);
+  const fields = decoder.decode(raw).split('\0');
+  const [resolvedOid, authorName, authorEmail, authoredAt, committerName, committerEmail, committedAt, subject, body] = fields;
+  return {
+    type: 'commit',
+    oid: resolvedOid,
+    subject: subject ?? '',
+    body: (body ?? '').trim(),
+    author: { name: authorName ?? '', email: authorEmail ?? '' },
+    committer: { name: committerName ?? '', email: committerEmail ?? '' },
+    authoredAt: authoredAt ?? null,
+    committedAt: committedAt ?? null,
   };
 }

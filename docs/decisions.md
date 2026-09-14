@@ -41,6 +41,10 @@ v0.1의 외부 업무·인계·검증 결과 중심 구조를 Git 변경·소스
 
 SCIP은 데이터 모델 참고이며 필수 서비스가 아니다. GraphDB는 계속 보류한다. 외부 인계·테스트/배포 기록 수집은 추가하지 않으며, OneDev PR API는 메타데이터 확인에 한정한다.
 
+## 2026-09-14: 커밋·PR 의도 질문 범위
+
+커밋·PR을 목록에서 선택하면 해당 Git 범위의 코드와 기록된 맥락을 함께 고정한다. 커밋 메시지, PR 제목·설명·댓글·리뷰는 `recorded_statement`로, import·라우트·호출 후보는 정적 코드 근거로 저장해 질문 답변에서 섞지 않는다. PR의 base/head ref가 작업 복제본에 없으면 앱 전용 bare 캐시에 필요한 ref만 fetch하며 등록된 checkout과 index는 건드리지 않는다. PR ref와 OneDev API가 없을 때는 코드 분석을 완료한 것처럼 표시하지 않고 누락 사유를 보여준다.
+
 ## 2026-09-13: 상세 구현 설계 추가
 
 [상세 구현 설계서](implementation-design.md)에 모듈·데이터·실행 계약을 작성했다. 첫 수직 기능은 외부 패키지 없는 Git commit 장부 CLI이며, 이후 working_tree·DB·관계 분석·LLM·웹 순서로 확장한다. 단계 A는 ESM JavaScript로 Git 수집을 검증하고 B에서 TypeScript 기반 전체 실행 환경을 고정한다. 구현 코드는 아직 작성하지 않았다.

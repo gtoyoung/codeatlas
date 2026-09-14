@@ -21,14 +21,17 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     const repository = await store.getRepository(id);
     if (!repository) return Response.json({ error: { code: 'NOT_FOUND', message: '저장소를 찾지 못했습니다.' } }, { status: 404 });
     const client = createOneDevClient(oneDevConfigFromEnv());
-    const [pullRequest, changes, reviews, comments, updates, builds, gitRefs] = await Promise.all([
-      client.getPullRequest(number),
+    // OneDev subresources use the database request id, while Git PR refs use
+    // the human-facing number. Resolve both once so either URL form works.
+    const pullRequest = await client.getPullRequest(number);
+    const prNumber = pullRequest.number ?? number;
+    const [changes, reviews, comments, updates, builds, gitRefs] = await Promise.all([
       client.getChanges(number),
       client.getReviews(number),
       client.getComments(number),
       client.getUpdates(number),
       client.getCurrentBuilds(number),
-      inspectPullRequestRefs(repository.path, number),
+      inspectPullRequestRefs(repository.path, prNumber),
     ]);
     return Response.json({ repositoryId: id, pullRequest, changes, reviews, comments, updates, builds, gitRefs });
   } catch (error) {

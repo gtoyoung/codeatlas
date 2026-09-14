@@ -1,8 +1,8 @@
 # 상세 구현 설계서
 
-- 버전: 0.2 / 작성일: 2026-09-14
+- 버전: 0.4 / 작성일: 2026-09-14
 - 기준: [제품 설계 v0.3](design.md), [리서치 근거](research-evidence.md)
-- 상태: 로컬 MVP 구현 중. Git 커밋 이력·로컬 소스·읽기 전용 OneDev PR 계약을 구현했다.
+- 상태: 로컬 MVP 구현 중. Git 커밋 이력·로컬 소스·OneDev PR 기록과 PR 코드 범위 분석 계약을 구현했다.
 - 범위: Git 커밋·로컬 소스 분석과 OneDev PR 조회. AI 인계 파일·테스트 실행·배포 기록 수집은 제외.
 
 ## 1. 구현 단위와 의존성
@@ -63,7 +63,7 @@ TypeScript와 Node.js를 공통 언어·런타임으로 사용한다. Next.js는
 ## 4. 공통 타입 계약
 
 ```ts
-type SnapshotKind = 'commit' | 'working_tree';
+type SnapshotKind = 'commit' | 'working_tree' | 'pull_request';
 type FileState = 'indexed' | 'partial' | 'failed' | 'excluded';
 type Resolution = 'resolved' | 'ambiguous' | 'unresolved' | 'external_boundary';
 type UnitState = 'explained' | 'explicitly_unexplained' | 'excluded_with_reason';
@@ -266,6 +266,6 @@ React Flow는 단계 F에 연결한다. C단계 관계 결과는 먼저 목록·
 
 `src/modules/repository/history.mjs`는 `git log --all`과 `for-each-ref`를 통해 모든 ref에서 도달 가능한 커밋의 SHA, 부모, author/committer, 메시지, 변경 파일, ref를 읽는다. shallow clone은 `complete: false`로 표시하고, 원본 checkout·index는 수정하지 않는다. `GET /api/repositories/:id/commits`가 검색과 최대 100개 목록을 제공한다.
 
-`src/modules/integrations/onedev/client.mjs`는 서버 전용 Bearer 토큰으로 OneDev PR 목록과 상세 하위 리소스를 읽는다. `refs.mjs`는 PR 번호의 `base/head/merge` ref가 현재 로컬 Git 객체에 있는지 확인한다. API 응답은 PR 기록과 로컬 ref 상태를 분리하며, 토큰은 응답·영속 저장소에 포함하지 않는다.
+`src/modules/integrations/onedev/client.mjs`는 서버 전용 Bearer 토큰으로 OneDev PR 목록과 상세 하위 리소스를 읽는다. `refs.mjs`는 PR 번호의 `base/head/merge` ref가 현재 로컬 Git 객체에 있는지 확인하고, 없으면 원본 checkout과 분리된 bare 캐시에 필요한 ref를 fetch한다. `range-sources.mjs`는 base..head tree·diff를 읽어 `pull_request` 스냅샷을 만든다. API 응답의 PR 기록과 코드 관계 근거를 분리하며, 토큰은 응답·영속 저장소에 포함하지 않는다.
 
-웹 화면은 현재 변경, 커밋, PR 탭으로 구성한다. 커밋은 검색 가능한 시간순 장부와 선택 상세, PR은 상태 필터·목록·상세 근거 패널로 보여준다. 관계 그래프는 사용자 화면에 노출하지 않고 기존 영향 확인 목록을 유지한다. 실제 OneDev 서버가 없는 개발 환경에서는 어댑터 fixture 테스트와 미설정 상태 UI로 검증한다.
+웹 화면은 현재 변경, 커밋, PR 탭으로 구성한다. 커밋은 검색 가능한 시간순 장부와 선택 상세, PR은 상태 필터·목록·댓글·리뷰·ref 상세 패널로 보여준다. 선택한 커밋·PR은 코드 분석 화면으로 이동하며 기록된 맥락 카드, 변경 장부, 영향 확인 목록, 근거 질문을 함께 제공한다. 관계 그래프는 사용자 화면에 노출하지 않고 목록·경로 형태의 영향 근거를 유지한다. 실제 OneDev 서버가 없는 개발 환경에서는 어댑터 fixture 테스트와 미설정 상태 UI로 검증한다.

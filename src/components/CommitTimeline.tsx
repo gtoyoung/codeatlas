@@ -21,7 +21,7 @@ function date(value: string) {
   catch { return value; }
 }
 
-export default function CommitTimeline({ repositoryId }: { repositoryId: string }) {
+export default function CommitTimeline({ repositoryId, onAnalyze }: { repositoryId: string; onAnalyze?: (commit: Commit) => void }) {
   const [query, setQuery] = useState('');
   const [commits, setCommits] = useState<Commit[]>([]);
   const [complete, setComplete] = useState(true);
@@ -68,7 +68,7 @@ export default function CommitTimeline({ repositoryId }: { repositoryId: string 
         <aside className="commit-detail panel">
           {!selected ? <div className="detail-placeholder"><span className="index-mark">SELECT A COMMIT</span><strong>왼쪽에서 커밋을 선택하면<br />변경 파일과 작성 근거를 봅니다.</strong></div> : <>
             <div className="panel-head"><h3>{selected.subject}</h3><code>{selected.oid}</code></div>
-            <div className="detail-body"><p className="detail-byline">{selected.author.name} &lt;{selected.author.email}&gt; · {date(selected.authoredAt)}</p>{selected.body && <p className="commit-body">{selected.body}</p>}<span className="detail-label">변경 파일 {selected.changedFiles.length}</span><div className="detail-files">{selected.changedFiles.map((file, index) => <div key={`${file.path}-${index}`}><b data-status={file.status[0]}>{file.status}</b><code>{file.path}</code></div>)}</div><span className="detail-label">참조된 ref</span><div className="ref-pills">{selected.refs.map((ref) => <span key={ref}>{ref}</span>)}</div></div>
+            <div className="detail-body"><p className="detail-byline">{selected.author.name} &lt;{selected.author.email}&gt; · {date(selected.authoredAt)}</p>{selected.body && <p className="commit-body">{selected.body}</p>}<button className="analyze-selection" onClick={() => onAnalyze?.(selected)} disabled={!onAnalyze}>이 커밋을 분석하고 질문하기</button><span className="detail-label">변경 파일 {selected.changedFiles.length}</span><div className="detail-files">{selected.changedFiles.map((file, index) => <div key={`${file.path}-${index}`}><b data-status={file.status[0]}>{file.status}</b><code>{file.path}</code></div>)}</div><span className="detail-label">참조된 ref</span><div className="ref-pills">{selected.refs.map((ref) => <span key={ref}>{ref}</span>)}</div></div>
           </>}
         </aside>
       </div>

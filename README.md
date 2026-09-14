@@ -24,7 +24,7 @@ OneDev는 Git 원격과 읽기 전용 PR 조회에 사용할 수 있습니다. `
 - [상세 구현 설계서](docs/implementation-design.md): 모듈·타입·DB·큐·API·LLM·화면·인수 조건
 - [첫 실행 계획: Git 변경 장부](docs/superpowers/plans/2026-09-13-git-ledger.md): 파일별 구현·검증 순서
 
-현재 MVP는 Git 변경 장부, 모든 ref의 커밋 이력, 작업 트리·커밋 스냅샷, 정적 관계 분석, 근거 저장, LLM 어댑터, OneDev PR API 어댑터, 웹 대시보드를 한 흐름으로 제공합니다.
+현재 MVP는 Git 변경 장부, 모든 ref의 커밋 이력, 작업 트리·커밋·PR 범위 스냅샷, 정적 관계 분석, 근거 저장, LLM 어댑터, OneDev PR API 어댑터, 웹 대시보드를 한 흐름으로 제공합니다. 커밋이나 PR을 선택하면 기록된 메시지·설명·댓글·리뷰와 코드 관계를 한 스냅샷에 고정해 질문할 수 있습니다.
 
 ## Git 변경 장부 CLI
 
@@ -47,6 +47,8 @@ npm run dev
 브라우저에서 `http://127.0.0.1:3000`을 엽니다. 저장소 경로를 등록하면 현재 로컬 소스 또는 HEAD 커밋을 분석해 변경 장부, 분석 범위, 변경 파일별 영향 확인 목록을 표시합니다.
 
 저장소를 선택한 뒤 `커밋` 탭에서 모든 ref에 도달 가능한 커밋을 검색할 수 있습니다. OneDev 환경 변수가 있으면 `PR` 탭에서 PR 작업 목록과 상세 근거를 확인합니다. OneDev 설정이 없을 때는 화면에 설정 방법을 안내하고 로컬 Git 기능은 계속 사용할 수 있습니다.
+
+PR 분석 시 OneDev의 `base/head` ref가 로컬에 없으면 `AI_HANDOFF_GIT_CACHE_DIR`의 bare 저장소에 필요한 ref만 가져옵니다. 원본 checkout·index·작업 트리는 수정하지 않습니다.
 
 LLM은 선택 설정입니다. `.env.local`에 `OPENAI_API_KEY`와 `OPENAI_MODEL`, 또는 `ANTHROPIC_API_KEY`와 `ANTHROPIC_MODEL`을 함께 설정합니다. 키가 없으면 외부 호출 없이 Git·코드 근거에 기반한 정형 요약을 사용합니다. 개발 도구 로그인이나 구독을 API 키로 간주하지 않습니다.
 

@@ -19,6 +19,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (!scan) return Response.json({ error: { code: 'NOT_FOUND', message: '분석 결과를 찾지 못했습니다.' } }, { status: 404 });
     const answer = await createLlmClient().answer({
       question: input.question,
+      context: scan.report.metadata ?? scan.report.context ?? null,
       evidence: scan.report.evidence ?? [],
     });
     await store.saveQuestion({ scanId: id, question: input.question, answer });

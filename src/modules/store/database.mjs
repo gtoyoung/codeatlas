@@ -5,7 +5,10 @@ import { fileURLToPath } from 'node:url';
 
 import { PGlite } from '@electric-sql/pglite';
 
-const migrationUrl = new URL('../../../migrations/001_core.sql', import.meta.url);
+const migrationUrls = [
+  new URL('../../../migrations/001_core.sql', import.meta.url),
+  new URL('../../../migrations/002_pull_request.sql', import.meta.url),
+];
 
 function repositoryFrom(row) {
   return {
@@ -37,8 +40,9 @@ export async function createStore(dataDir = 'memory://') {
     await mkdir(dirname(resolve(dataDir)), { recursive: true });
   }
   const db = await PGlite.create(dataDir);
-  const migration = await readFile(fileURLToPath(migrationUrl), 'utf8');
-  await db.exec(migration);
+  for (const migrationUrl of migrationUrls) {
+    await db.exec(await readFile(fileURLToPath(migrationUrl), 'utf8'));
+  }
 
   return {
     async addRepository({ name, path, defaultRef = 'HEAD' }) {

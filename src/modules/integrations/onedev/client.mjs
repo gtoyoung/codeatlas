@@ -18,6 +18,12 @@ function person(value) {
   };
 }
 
+function projectPath(value) {
+  if (!value) return null;
+  if (typeof value === 'string') return value;
+  return value.path ?? value.name ?? value.key ?? null;
+}
+
 function pullRequest(value) {
   return {
     id: value.id ?? null,
@@ -27,6 +33,11 @@ function pullRequest(value) {
     status: String(value.status ?? 'UNKNOWN').toLowerCase(),
     source: value.source ?? value.sourceBranch ?? value.headBranch ?? null,
     target: value.target ?? value.targetBranch ?? value.baseBranch ?? null,
+    sourceProject: projectPath(value.sourceProject ?? value.sourceProjectPath),
+    targetProject: projectPath(value.targetProject ?? value.targetProjectPath),
+    baseCommitHash: value.baseCommitHash ?? value.baseOid ?? value.targetCommitHash ?? null,
+    headCommitHash: value.headCommitHash ?? value.sourceCommitHash ?? value.headOid ?? value.buildCommitHash ?? null,
+    buildCommitHash: value.buildCommitHash ?? null,
     author: person(value.submitter ?? value.author ?? value.creator),
     createdAt: value.submitDate ?? value.createdAt ?? null,
     updatedAt: value.lastUpdated ?? value.updatedAt ?? null,
@@ -37,7 +48,8 @@ function pullRequest(value) {
 
 function unwrapList(body) {
   if (Array.isArray(body)) return body;
-  return body?.content ?? body?.items ?? body?.pullRequests ?? body?.data ?? [];
+  return body?.content ?? body?.items ?? body?.pullRequests ?? body?.changes
+    ?? body?.reviews ?? body?.comments ?? body?.updates ?? body?.builds ?? body?.data ?? [];
 }
 
 export function createOneDevClient({ serverUrl, accessToken, projectPath = '', fetchImpl = globalThis.fetch } = {}) {

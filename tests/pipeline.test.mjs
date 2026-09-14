@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { makeRepo } from './helpers/repository.mjs';
 import { createStore } from '../src/modules/store/database.mjs';
 import { createLlmClient } from '../src/modules/llm/client.mjs';
-import { analyzeAndSaveRepository } from '../src/modules/pipeline/analyze-repository.mjs';
+import { analyzeAndSaveRepository, buildEvidence } from '../src/modules/pipeline/analyze-repository.mjs';
 
 const identity = ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid'];
 
@@ -32,4 +32,13 @@ test('로컬 저장소를 스캔하고 관계·요약을 한 분석 결과로 �
   assert.ok(scan.graph.edges.some((edge) => edge.kind === 'imports'));
   assert.equal(scan.summary.mode, 'deterministic');
   assert.equal((await store.listScans(registered.id)).length, 1);
+});
+
+test('커밋·PR 기록을 코드 관계와 분리된 근거 항목으로 보존한다', () => {
+  const evidence = buildEvidence(
+    { changes: [], metadata: { type: 'pull_request', number: 12, title: 'Retry safely', description: 'Avoid duplicate writes.', comments: ['Please keep this atomic.'] } },
+    { edges: [] },
+  );
+  assert.ok(evidence.some((item) => item.kind === 'recorded_statement' && /Retry safely/.test(item.text)));
+  assert.ok(evidence.some((item) => item.kind === 'recorded_statement' && /atomic/.test(item.text)));
 });

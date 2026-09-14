@@ -18,13 +18,37 @@ export function buildEvidence(report, graph) {
     text: `${edge.source} ${edge.kind} ${edge.target}`,
     range: edge.evidence,
   }));
-  return [...changes, ...relations];
+  const context = report.metadata ?? report.context ?? null;
+  const recorded = [];
+  if (context?.type === 'commit') {
+    recorded.push({
+      id: 'context-commit',
+      kind: 'recorded_statement',
+      path: null,
+      text: `커밋 메시지: ${context.subject || '(메시지 없음)'}${context.body ? `\n${context.body}` : ''}`,
+    });
+  }
+  if (context?.type === 'pull_request') {
+    recorded.push({
+      id: 'context-pr',
+      kind: 'recorded_statement',
+      path: null,
+      text: `PR #${context.number ?? '?'} 제목: ${context.title || '(제목 없음)'}${context.description ? `\n${context.description}` : ''}`,
+    });
+    for (const [kind, values] of [['comment', context.comments], ['review', context.reviews], ['update', context.updates]]) {
+      for (const [index, value] of (Array.isArray(values) ? values : []).entries()) {
+        const text = typeof value === 'string' ? value : value?.body ?? value?.message ?? value?.comment ?? value?.content;
+        if (text) recorded.push({ id: `context-${kind}-${index + 1}`, kind: 'recorded_statement', path: null, text: `${kind}: ${text}` });
+      }
+    }
+  }
+  return [...recorded, ...changes, ...relations];
 }
 
-export async function analyzeAndSaveRepository({ store, llm, repository, kind, ref = 'HEAD' }) {
-  const sourceSnapshot = kind === 'working_tree'
+export async function analyzeAndSaveRepository({ store, llm, repository, kind, ref = 'HEAD', snapshot = null }) {
+  const sourceSnapshot = snapshot ?? (kind === 'working_tree'
     ? await scanWorkingTree(repository.path, { includeUntracked: true })
-    : await loadCommitSnapshot(repository.path, ref);
+    : await loadCommitSnapshot(repository.path, ref));
   const snapshotId = randomUUID();
   const graph = analyzeSources({ snapshotId, files: sourceSnapshot.files });
   const evidence = buildEvidence(sourceSnapshot, graph);
@@ -32,6 +56,7 @@ export async function analyzeAndSaveRepository({ store, llm, repository, kind, r
     changes: sourceSnapshot.changes,
     graph,
     evidence,
+    context: sourceSnapshot.metadata ?? null,
   });
   const report = {
     ...sourceSnapshot,
