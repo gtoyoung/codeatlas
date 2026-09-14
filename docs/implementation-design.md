@@ -1,9 +1,9 @@
 # 상세 구현 설계서
 
-- 버전: 0.1 / 작성일: 2026-09-13
+- 버전: 0.2 / 작성일: 2026-09-14
 - 기준: [제품 설계 v0.3](design.md), [리서치 근거](research-evidence.md)
-- 상태: 구현 전 설계. 아래 파일·함수·DB·API는 생성할 계약이며 현재 구현물이 아니다.
-- 범위: Git 커밋·로컬 소스 분석. OneDev API, AI 인계 파일, 테스트 실행·배포 기록 수집 제외.
+- 상태: 로컬 MVP 구현 중. Git 커밋 이력·로컬 소스·읽기 전용 OneDev PR 계약을 구현했다.
+- 범위: Git 커밋·로컬 소스 분석과 OneDev PR 조회. AI 인계 파일·테스트 실행·배포 기록 수집은 제외.
 
 ## 1. 구현 단위와 의존성
 
@@ -260,4 +260,12 @@ React Flow는 단계 F에 연결한다. C단계 관계 결과는 먼저 목록·
 | 24장 UI·저장 | db, app | partial·근거·미설명 노출 |
 | 25장 품질 | fixtures, tests | 고정 보류 표본과 사람 라벨 대조 |
 
-정확도 목표는 제품 설계 25장을 따른다. 아직 실제 소스나 모델 평가를 수행하지 않았으므로 수치를 달성했다고 표시하지 않는다. 단계별 commit과 검증 결과를 남기며 사용자의 요청은 현재 문서 작성까지다.
+정확도 목표는 제품 설계 25장을 따른다. 아직 실제 소스나 모델 평가를 수행하지 않았으므로 수치를 달성했다고 표시하지 않는다. 단계별 commit과 검증 결과를 남긴다.
+
+## 15. 구현 현황: 커밋·PR 작업 공간
+
+`src/modules/repository/history.mjs`는 `git log --all`과 `for-each-ref`를 통해 모든 ref에서 도달 가능한 커밋의 SHA, 부모, author/committer, 메시지, 변경 파일, ref를 읽는다. shallow clone은 `complete: false`로 표시하고, 원본 checkout·index는 수정하지 않는다. `GET /api/repositories/:id/commits`가 검색과 최대 100개 목록을 제공한다.
+
+`src/modules/integrations/onedev/client.mjs`는 서버 전용 Bearer 토큰으로 OneDev PR 목록과 상세 하위 리소스를 읽는다. `refs.mjs`는 PR 번호의 `base/head/merge` ref가 현재 로컬 Git 객체에 있는지 확인한다. API 응답은 PR 기록과 로컬 ref 상태를 분리하며, 토큰은 응답·영속 저장소에 포함하지 않는다.
+
+웹 화면은 현재 변경, 커밋, PR 탭으로 구성한다. 커밋은 검색 가능한 시간순 장부와 선택 상세, PR은 상태 필터·목록·상세 근거 패널로 보여준다. 관계 그래프는 사용자 화면에 노출하지 않고 기존 영향 확인 목록을 유지한다. 실제 OneDev 서버가 없는 개발 환경에서는 어댑터 fixture 테스트와 미설정 상태 UI로 검증한다.

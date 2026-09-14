@@ -11,7 +11,7 @@
 
 OneDev Git 원격 → 일반 Git fetch → 로컬 Git·소스 스냅샷 → 정적 분석·LLM → 변경 장부·영향 확인 목록·근거 질의.
 
-OneDev는 Git 원격으로만 사용합니다. OneDev API·PR 연동, AI 인계 파일, 테스트 실행·배포 기록 수집은 제외합니다. 테스트 소스는 코드로 분석할 수 있지만 통과 여부는 판단하지 않습니다.
+OneDev는 Git 원격과 읽기 전용 PR 조회에 사용할 수 있습니다. `ONEDEV_SERVER_URL`, `ONEDEV_ACCESS_TOKEN`을 설정하면 PR 목록·상세·변경·리뷰·댓글·업데이트를 서버에서 읽습니다. 토큰은 브라우저와 DB에 전달하지 않습니다. 테스트 소스는 코드로 분석할 수 있지만 통과 여부는 판단하지 않습니다.
 
 현재 구성은 로컬 Next.js 웹·API, 정적 분석 파이프라인, 내장 PostgreSQL(PGlite)입니다. 외부 DB 설치 없이 `.data/postgres`에 저장합니다.
 
@@ -24,7 +24,7 @@ OneDev는 Git 원격으로만 사용합니다. OneDev API·PR 연동, AI 인계 
 - [상세 구현 설계서](docs/implementation-design.md): 모듈·타입·DB·큐·API·LLM·화면·인수 조건
 - [첫 실행 계획: Git 변경 장부](docs/superpowers/plans/2026-09-13-git-ledger.md): 파일별 구현·검증 순서
 
-현재 MVP는 Git 변경 장부, 작업 트리·커밋 스냅샷, 정적 관계 분석, 근거 저장, LLM 어댑터, 웹 대시보드를 한 흐름으로 제공합니다.
+현재 MVP는 Git 변경 장부, 모든 ref의 커밋 이력, 작업 트리·커밋 스냅샷, 정적 관계 분석, 근거 저장, LLM 어댑터, OneDev PR API 어댑터, 웹 대시보드를 한 흐름으로 제공합니다.
 
 ## Git 변경 장부 CLI
 
@@ -45,6 +45,8 @@ npm run dev
 ```
 
 브라우저에서 `http://127.0.0.1:3000`을 엽니다. 저장소 경로를 등록하면 현재 로컬 소스 또는 HEAD 커밋을 분석해 변경 장부, 분석 범위, 변경 파일별 영향 확인 목록을 표시합니다.
+
+저장소를 선택한 뒤 `커밋` 탭에서 모든 ref에 도달 가능한 커밋을 검색할 수 있습니다. OneDev 환경 변수가 있으면 `PR` 탭에서 PR 작업 목록과 상세 근거를 확인합니다. OneDev 설정이 없을 때는 화면에 설정 방법을 안내하고 로컬 Git 기능은 계속 사용할 수 있습니다.
 
 LLM은 선택 설정입니다. `.env.local`에 `OPENAI_API_KEY`와 `OPENAI_MODEL`, 또는 `ANTHROPIC_API_KEY`와 `ANTHROPIC_MODEL`을 함께 설정합니다. 키가 없으면 외부 호출 없이 Git·코드 근거에 기반한 정형 요약을 사용합니다. 개발 도구 로그인이나 구독을 API 키로 간주하지 않습니다.
 

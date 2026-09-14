@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { buildImpactList } from '@/modules/analysis/impact-list.mjs';
+import CommitTimeline from './CommitTimeline';
+import PullRequestInbox from './PullRequestInbox';
 
 type ImpactRelation = {
   id: string;
@@ -66,6 +68,7 @@ export default function Dashboard({ suggestedPath }: { suggestedPath: string }) 
   const [answer, setAnswer] = useState<{ answer: string; citations: string[]; support: string; mode: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [workspace, setWorkspace] = useState<'overview' | 'commits' | 'pulls'>('overview');
 
   const selected = useMemo(
     () => repositories.find((repository) => repository.id === selectedId) ?? null,
@@ -207,13 +210,18 @@ export default function Dashboard({ suggestedPath }: { suggestedPath: string }) 
         </aside>
 
         <section className="analysis-stage">
-          {!scan ? (
+          <nav className="workspace-tabs" aria-label="작업 공간">
+            <button className={workspace === 'overview' ? 'active' : ''} onClick={() => setWorkspace('overview')}>현재 변경</button>
+            <button className={workspace === 'commits' ? 'active' : ''} onClick={() => setWorkspace('commits')} disabled={!selected}>커밋 <span>Git</span></button>
+            <button className={workspace === 'pulls' ? 'active' : ''} onClick={() => setWorkspace('pulls')} disabled={!selected}>PR <span>OneDev</span></button>
+          </nav>
+          {workspace === 'commits' && selected ? <CommitTimeline repositoryId={selected.id} /> : workspace === 'pulls' && selected ? <PullRequestInbox repositoryId={selected.id} /> : workspace === 'overview' && !scan ? (
             <div className="welcome-panel">
               <span className="index-mark">A—Z</span>
               <h2>코드의 현재 상태부터<br />정확히 고정합니다.</h2>
               <p>저장소를 등록하면 변경 파일, 영향 연결, 해석하지 못한 영역을 함께 보여줍니다.</p>
             </div>
-          ) : (
+          ) : workspace === 'overview' && scan ? (
             <>
               <div className="snapshot-banner">
                 <div>
@@ -324,7 +332,7 @@ export default function Dashboard({ suggestedPath }: { suggestedPath: string }) 
                 )}
               </article>
             </>
-          )}
+          ) : null}
         </section>
       </div>
     </main>
