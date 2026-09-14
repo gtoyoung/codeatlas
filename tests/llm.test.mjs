@@ -71,6 +71,29 @@ test('LLM 공급자 오류에 응답 본문과 상태를 안전하게 포함한�
   );
 });
 
+test('OpenRouter 공급자 메타데이터의 rate limit 원인을 보존한다', async () => {
+  const fakeFetch = async () => ({
+    ok: false,
+    status: 429,
+    json: async () => ({ error: {
+      message: 'Provider returned error',
+      metadata: { raw: 'temporarily rate-limited upstream' },
+    } }),
+  });
+  const client = createLlmClient({
+    LLM_BASE_URL: 'https://openrouter.ai/api/v1',
+    LLM_API_KEY: 'compatible-key',
+    LLM_MODEL: 'google/gemma-4-26b-a4b-it:free',
+  }, fakeFetch);
+
+  await assert.rejects(
+    client.summarize({ changes: [], graph: { edges: [] } }),
+    (error) => error.code === 'LLM_REQUEST_FAILED'
+      && error.status === 429
+      && /temporarily rate-limited upstream/.test(error.message),
+  );
+});
+
 test('커밋·PR 맥락을 LLM 질문 프롬프트에 함께 고정한다', async () => {
   let prompt = '';
   const fakeFetch = async (_url, init) => {

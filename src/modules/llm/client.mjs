@@ -26,7 +26,10 @@ async function readResponseDetail(response) {
   try {
     const source = typeof response.clone === 'function' ? response.clone() : response;
     const body = await source.json();
-    const detail = body?.error?.message ?? body?.message ?? body?.error?.type;
+    const detail = body?.error?.metadata?.raw
+      ?? body?.error?.message
+      ?? body?.message
+      ?? body?.error?.type;
     return typeof detail === 'string' ? detail.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 240) : '';
   } catch {
     return '';
