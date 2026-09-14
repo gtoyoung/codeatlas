@@ -9,7 +9,7 @@
 
 ## 분석 흐름
 
-OneDev Git 원격 → 일반 Git fetch → 로컬 Git·소스 스냅샷 → 정적 분석·LLM → 변경 피드·관계 지도·맥락 문서.
+OneDev Git 원격 → 일반 Git fetch → 로컬 Git·소스 스냅샷 → 정적 분석·LLM → 변경 장부·영향 확인 목록·근거 질의.
 
 OneDev는 Git 원격으로만 사용합니다. OneDev API·PR 연동, AI 인계 파일, 테스트 실행·배포 기록 수집은 제외합니다. 테스트 소스는 코드로 분석할 수 있지만 통과 여부는 판단하지 않습니다.
 
@@ -44,7 +44,7 @@ Copy-Item .env.example .env.local
 npm run dev
 ```
 
-브라우저에서 `http://127.0.0.1:3000`을 엽니다. 저장소 경로를 등록하면 현재 로컬 소스 또는 HEAD 커밋을 분석해 변경 장부, 분석 범위, Next.js·TypeScript 관계 지도를 표시합니다.
+브라우저에서 `http://127.0.0.1:3000`을 엽니다. 저장소 경로를 등록하면 현재 로컬 소스 또는 HEAD 커밋을 분석해 변경 장부, 분석 범위, 변경 파일별 영향 확인 목록을 표시합니다.
 
 LLM은 선택 설정입니다. `.env.local`에 `OPENAI_API_KEY`와 `OPENAI_MODEL`, 또는 `ANTHROPIC_API_KEY`와 `ANTHROPIC_MODEL`을 함께 설정합니다. 키가 없으면 외부 호출 없이 Git·코드 근거에 기반한 정형 요약을 사용합니다. 개발 도구 로그인이나 구독을 API 키로 간주하지 않습니다.
 

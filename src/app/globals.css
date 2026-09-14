@@ -168,9 +168,25 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .coverage-bar { height: 8px; background: #e4e9f1; margin: 22px 16px 13px; overflow: hidden; border-radius: 8px; }
 .coverage-bar span { display: block; height: 100%; background: var(--mint); }
 .coverage-panel p, .coverage-panel small { display: block; margin: 8px 16px; color: var(--muted); font-size: 12px; }
-.graph-panel { margin-top: 14px; }
-.graph-canvas { height: 460px; background: #f8fafe; }
-.empty-state { height: 240px; display: grid; place-content: center; color: var(--muted); }
+.impact-panel { margin-top: 14px; }
+.impact-guide { margin: 0; padding: 15px 16px; color: var(--muted); font-size: 13px; border-bottom: 1px solid var(--line); background: #f8fafe; }
+.impact-list { max-height: 560px; overflow: auto; }
+.impact-group { padding: 16px; border-bottom: 1px solid var(--line); }
+.impact-group:last-child { border-bottom: 0; }
+.impact-group header { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.impact-group header b { width: fit-content; min-width: 26px; padding: 4px 6px; border-radius: 4px; background: #eaf1ff; color: var(--signal); font: 700 11px "Cascadia Mono", monospace; text-align: center; }
+.impact-group header b[data-status="D"] { background: #fff0ec; color: var(--ember); }
+.impact-group header strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 13px "Cascadia Mono", monospace; }
+.impact-group header span { color: var(--muted); font: 11px "Cascadia Mono", monospace; }
+.relation-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0 0 48px; }
+.relation-row { min-width: 0; padding: 11px 12px; border: 1px solid #dce4f0; border-left: 3px solid var(--mint); border-radius: 5px; background: white; display: grid; gap: 4px; }
+.relation-row span { color: #347c6d; font-size: 11px; font-weight: 700; }
+.relation-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 12px "Cascadia Mono", monospace; }
+.relation-row small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font: 10px "Cascadia Mono", monospace; }
+.impact-unknown { margin: 12px 0 0 48px; padding: 11px 12px; border-left: 3px solid #aab8cc; background: #f3f5f8; color: var(--muted); font-size: 12px; }
+.impact-empty { min-height: 170px; padding: 32px; display: grid; place-content: center; gap: 7px; text-align: center; }
+.impact-empty strong { font: 650 17px Bahnschrift, sans-serif; }
+.impact-empty span { color: var(--muted); font-size: 12px; }
 
 .evidence-desk { margin-top: 14px; padding: 24px; background: var(--ink); color: white; border-radius: 8px; display: grid; grid-template-columns: .65fr 1fr; gap: 20px 28px; }
 .evidence-desk h3 { margin: 7px 0; font: 650 25px Bahnschrift, sans-serif; }
@@ -207,7 +223,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .repo-form, .split-row, .evidence-desk { grid-template-columns: 1fr; }
   .metric-row { grid-template-columns: repeat(2, 1fr); }
   .answer-card { grid-column: auto; }
-  .graph-canvas { height: 380px; }
+  .relation-list { grid-template-columns: 1fr; margin-left: 0; }
+  .impact-unknown { margin-left: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
