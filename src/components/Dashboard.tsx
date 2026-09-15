@@ -28,13 +28,21 @@ type ChangeDiff = {
   truncated?: boolean;
 };
 
+type Narrative = {
+  why: string;
+  what: string;
+  impact: string;
+  confidence: string;
+  sections?: Array<{ key: string; label: string; text: string; citations?: string[] }>;
+};
+
 type Scan = {
   id: string;
   kind: 'commit' | 'working_tree' | 'pull_request';
   targetOid: string | null;
   baseOid: string | null;
   createdAt: string;
-  summary: { title: string; overview: string; mode: string; cautions?: string[]; relationCount?: number };
+  summary: { title: string; overview: string; mode: string; cautions?: string[]; relationCount?: number; narrative?: Narrative };
   report: {
     changes: Array<{ status: string; oldPath: string | null; newPath: string | null; diff?: ChangeDiff | null }>;
     files: Array<{ path: string; state?: string; reason?: string | null }>;
@@ -79,6 +87,24 @@ async function readJson(response: Response) {
 
 function shortOid(value: string | null) {
   return value ? value.slice(0, 9) : 'WORKTREE';
+}
+
+function fallbackNarrative(scan: Scan): Narrative {
+  const metadata = scan.report.metadata;
+  const title = metadata?.type === 'pull_request' ? metadata.title : metadata?.subject;
+  const why = title
+    ? `기록된 이유는 ${metadata?.type === 'pull_request' ? 'PR' : '커밋'}에 적힌 “${title}”입니다.`
+    : metadata
+      ? '기록된 이유가 없어 변경된 코드와 정적 관계를 바탕으로 확인합니다.'
+      : '기록된 이유가 없어 변경된 코드와 정적 관계를 바탕으로 확인합니다.';
+  return {
+    why,
+    what: scan.summary.overview,
+    impact: scan.graph.edges.length > 0
+      ? `정적 관계 ${scan.graph.edges.length}개를 확인했습니다. 연결된 파일의 영향은 아래 목록에서 확인할 수 있습니다.`
+      : '정적 관계를 찾지 못했습니다. 실제 실행 흐름은 확인이 필요합니다.',
+    confidence: '파일 변경과 정적 관계는 코드에서 확인했고, 실행 결과와 기록 밖의 실제 의도는 확인 필요합니다.',
+  };
 }
 
 type CommitSelection = { oid: string };
@@ -249,6 +275,7 @@ export default function Dashboard({ suggestedPath }: { suggestedPath: string }) 
   }
 
   const coverage = scan?.graph.coverage;
+  const narrative: Narrative | null = scan ? { ...fallbackNarrative(scan), ...(scan.summary.narrative ?? {}) } : null;
 
   return (
     <main className="workbench">
@@ -326,11 +353,39 @@ export default function Dashboard({ suggestedPath }: { suggestedPath: string }) 
                 </div>
               )}
 
-              {scan.report.metadata && <article className="intent-card">
-                <div><span className="section-label">RECORDED CONTEXT</span><h3>{scan.report.metadata.type === 'pull_request' ? `PR #${scan.report.metadata.number ?? '?'} · ${scan.report.metadata.title ?? '제목 없음'}` : `커밋 · ${scan.report.metadata.subject ?? '메시지 없음'}`}</h3></div>
-                <p>{scan.report.metadata.type === 'pull_request' ? (scan.report.metadata.description || 'PR 설명이 없습니다.') : (scan.report.metadata.body || '본문이 없는 커밋입니다.')}</p>
-                <small>기록된 메시지·설명은 작성자의 표현입니다. 실제 의도는 코드 변경과 함께 질문으로 확인하세요.</small>
+              {narrative && <article className="narrative-card">
+                <div className="narrative-head">
+                  <div>
+                    <span className="section-label">CHANGE STORY</span>
+                    <h2>이 변경은 왜 만들어졌나</h2>
+                  </div>
+                  <span className="narrative-badge">{scan.summary.mode === 'deterministic' ? 'Git · 코드 근거' : 'LLM · 근거 기반'}</span>
+                </div>
+                <p className="narrative-lead">{narrative.why}</p>
+                <div className="narrative-grid">
+                  <section>
+                    <span>무엇을 바꿨나</span>
+                    <p>{narrative.what}</p>
+                  </section>
+                  <section>
+                    <span>프로젝트에 어떤 변화인가</span>
+                    <p>{narrative.impact}</p>
+                  </section>
+                </div>
+                <div className="narrative-confidence">
+                  <span>어디까지 확실한가</span>
+                  <p>{narrative.confidence}</p>
+                </div>
               </article>}
+
+              {scan.report.metadata && <details className="recorded-source">
+                <summary>기록된 원문 보기</summary>
+                <article className="intent-card">
+                  <div><span className="section-label">RECORDED CONTEXT</span><h3>{scan.report.metadata.type === 'pull_request' ? `PR #${scan.report.metadata.number ?? '?'} · ${scan.report.metadata.title ?? '제목 없음'}` : `커밋 · ${scan.report.metadata.subject ?? '메시지 없음'}`}</h3></div>
+                  <p>{scan.report.metadata.type === 'pull_request' ? (scan.report.metadata.description || 'PR 설명이 없습니다.') : (scan.report.metadata.body || '본문이 없는 커밋입니다.')}</p>
+                  <small>메시지·설명은 작성자가 남긴 기록입니다. 실제 의도는 코드 변경과 질문으로 확인하세요.</small>
+                </article>
+              </details>}
 
               <article className="summary-card">
                 <div className="summary-copy">
@@ -426,8 +481,8 @@ export default function Dashboard({ suggestedPath }: { suggestedPath: string }) 
               <article className="evidence-desk">
                 <div>
                   <span className="section-label">EVIDENCE DESK</span>
-                  <h3>이 코드에 질문하기</h3>
-                  <p>커밋 메시지·PR 대화는 기록된 맥락으로, 코드 관계는 정적 근거로 분리해 답합니다.</p>
+                  <h3>변경 스토리에 질문하기</h3>
+                  <p>커밋·PR 기록과 코드 근거를 나눠 답합니다. 모르는 내용은 확인 필요로 표시합니다.</p>
                 </div>
                 <form onSubmit={ask}>
                   <textarea value={question} onChange={(event) => setQuestion(event.target.value)} />

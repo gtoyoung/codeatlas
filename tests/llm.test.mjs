@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildAnswerSections, createLlmClient, validateCitedAnswer } from '../src/modules/llm/client.mjs';
+import { buildAnswerSections, buildNarrativeSummary, createLlmClient, validateCitedAnswer } from '../src/modules/llm/client.mjs';
 
 test('API 설정이 없으면 외부 호출 없이 근거 기반 로컬 요약을 반환한다', async () => {
   const client = createLlmClient({}, () => { throw new Error('must not call'); });
@@ -140,4 +140,85 @@ test('커밋·PR 맥락을 LLM 질문 프롬프트에 함께 고정한다', asyn
   });
   assert.match(prompt, /Prevent duplicate requests/);
   assert.match(prompt, /Serialize the update/);
+});
+
+test('변경 스토리는 기록·코드·영향·확인 경계를 쉬운 문장으로 나눈다', () => {
+  const result = buildNarrativeSummary({
+    changes: [
+      { status: 'M', newPath: 'src/replies.ts' },
+      { status: 'A', newPath: 'src/reply-route.ts' },
+    ],
+    graph: {
+      edges: [
+        { source: 'src/reply-route.ts', target: 'src/replies.ts', kind: 'imports', evidence: { path: 'src/reply-route.ts', startLine: 4 } },
+      ],
+    },
+    context: {
+      type: 'commit',
+      subject: 'fix: prevent duplicate replies',
+      body: 'Serialize the update.',
+    },
+  });
+
+  assert.match(result.why, /기록된 이유/);
+  assert.match(result.why, /prevent duplicate replies/);
+  assert.match(result.what, /src\/replies\.ts/);
+  assert.match(result.impact, /src\/replies\.ts/);
+  assert.match(result.confidence, /확인 필요/);
+  assert.deepEqual(result.sections.map((section) => section.key), ['why', 'what', 'impact', 'confidence']);
+});
+
+test('변경 스토리의 관계 예시는 내부 노드 ID 대신 파일 경로로 읽힌다', () => {
+  const result = buildNarrativeSummary({
+    changes: [{ status: 'M', newPath: 'src/replies.ts' }],
+    graph: {
+      nodes: [
+        { id: 'snapshot:file:src/replies.ts', path: 'src/replies.ts', label: 'replies.ts' },
+        { id: 'snapshot:file:src/routes.ts', path: 'src/routes.ts', label: 'routes.ts' },
+      ],
+      edges: [{ source: 'snapshot:file:src/routes.ts', target: 'snapshot:file:src/replies.ts', kind: 'imports' }],
+    },
+  });
+
+  assert.match(result.impact, /src\/routes\.ts/);
+  assert.match(result.impact, /src\/replies\.ts/);
+  assert.doesNotMatch(result.impact, /snapshot:file/);
+});
+
+test('LLM 요약 프롬프트는 비개발자용 변경 스토리 형식을 요구한다', async () => {
+  let prompt = '';
+  const fakeFetch = async (_url, init) => {
+    prompt = JSON.parse(init.body).input;
+    return { ok: true, json: async () => ({ output_text: JSON.stringify({
+      title: '중복 답변 방지',
+      overview: '답변 중복을 막는 변경입니다.',
+      narrative: { why: '중복 답변을 막기 위해', what: '응답 처리를 조정했습니다.', impact: '답변 흐름이 안정됩니다.', confidence: '코드에서 확인했습니다.' },
+    }) }) };
+  };
+  const client = createLlmClient({ OPENAI_API_KEY: 'key', OPENAI_MODEL: 'model' }, fakeFetch);
+  const result = await client.summarize({
+    changes: [{ status: 'M', newPath: 'src/replies.ts' }],
+    graph: { edges: [] },
+    context: { type: 'commit', subject: 'Prevent duplicate replies', body: 'Serialize the update.' },
+    evidence: [{ id: 'context-commit', kind: 'recorded_statement', text: '커밋 메시지: Prevent duplicate replies' }],
+  });
+
+  assert.equal(result.mode, 'openai');
+  assert.equal(result.narrative.why, '중복 답변을 막기 위해');
+  assert.match(prompt, /왜 만들었나/);
+  assert.match(prompt, /무엇을 바꿨나/);
+  assert.match(prompt, /프로젝트에 어떤 변화/);
+  assert.match(prompt, /확인 필요/);
+  assert.match(prompt, /Prevent duplicate replies/);
+});
+
+test('구조화되지 않은 LLM 요약은 정적 변경 스토리로 안전하게 폴백한다', async () => {
+  const fakeFetch = async () => ({ ok: true, json: async () => ({ output_text: '설명만 반환했습니다.' }) });
+  const client = createLlmClient({ OPENAI_API_KEY: 'key', OPENAI_MODEL: 'model' }, fakeFetch);
+  const result = await client.summarize({ changes: [{ status: 'D', oldPath: 'src/old.ts' }], graph: { edges: [] } });
+
+  assert.equal(result.mode, 'openai');
+  assert.match(result.overview, /설명만 반환했습니다/);
+  assert.match(result.narrative.why, /기록된 이유가 없습니다/);
+  assert.match(result.narrative.what, /src\/old\.ts/);
 });

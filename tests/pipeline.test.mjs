@@ -31,6 +31,9 @@ test('로컬 저장소를 스캔하고 관계·요약을 한 분석 결과로 �
   assert.equal(scan.report.kind, 'commit');
   assert.ok(scan.graph.edges.some((edge) => edge.kind === 'imports'));
   assert.equal(scan.summary.mode, 'deterministic');
+  assert.match(scan.summary.narrative.why, /기록된 이유/);
+  assert.match(scan.summary.narrative.what, /app\.ts/);
+  assert.match(scan.summary.narrative.impact, /value\.ts/);
   assert.equal((await store.listScans(registered.id)).length, 1);
 });
 

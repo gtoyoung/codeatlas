@@ -313,6 +313,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .answer-card { grid-column: auto; }
   .relation-list { grid-template-columns: 1fr; margin-left: 0; }
   .impact-unknown { margin-left: 0; }
+  .narrative-grid { grid-template-columns: 1fr; }
+  .narrative-head { display: block; }
+  .narrative-badge { display: inline-block; margin-top: 13px; }
   .workspace-tabs button { flex: 1; padding-inline: 5px; }
   .pr-filters { overflow-x: auto; }
 }
@@ -379,9 +382,35 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .workspace-tabs button.active { border: 0; background: var(--blueprint); color: white; box-shadow: 0 5px 14px rgba(36,59,98,.18); }
 .workspace-tabs button.active span { color: var(--mint); }
 .snapshot-banner { border-radius: 10px 10px 0 0; background: #213c68; }
-.summary-card { border-radius: 0 0 10px 10px; }
+.summary-card { margin-top: 14px; border-top: 1px solid var(--line); border-radius: 10px; }
 .impact-panel, .changes-panel, .coverage-panel, .evidence-desk { border-radius: 10px; }
 .evidence-desk { box-shadow: 0 14px 30px rgba(16,24,38,.16); }
+
+/* The change story leads with plain-language intent, then keeps the raw record available. */
+.narrative-card {
+  margin-top: 14px;
+  padding: clamp(22px, 3.5vw, 34px);
+  border: 1px solid #b8c9e4;
+  border-left: 5px solid var(--signal);
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ffffff 0%, #f2f6fd 100%);
+  box-shadow: 0 12px 28px rgba(36, 59, 98, .08);
+}
+.narrative-head { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+.narrative-card h2 { margin: 7px 0 0; font: 700 clamp(25px, 3.5vw, 38px)/1.05 Bahnschrift, sans-serif; letter-spacing: -.045em; }
+.narrative-badge { flex: 0 0 auto; padding: 6px 8px; border: 1px solid #c3d2e8; border-radius: 4px; color: var(--blueprint); background: #eaf1ff; font: 700 10px "Cascadia Mono", monospace; }
+.narrative-lead { margin: 20px 0 0; max-width: 920px; color: var(--ink); font-size: 17px; line-height: 1.65; font-weight: 600; }
+.narrative-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 22px; }
+.narrative-grid section { padding: 15px 16px; border: 1px solid #d8e1ef; border-radius: 7px; background: rgba(255,255,255,.76); }
+.narrative-grid section > span, .narrative-confidence > span { color: var(--signal); font: 700 10px "Cascadia Mono", monospace; letter-spacing: .07em; }
+.narrative-grid p, .narrative-confidence p { margin: 8px 0 0; color: #44536b; font-size: 13px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+.narrative-confidence { margin-top: 12px; padding: 14px 16px; border-left: 3px solid var(--ember); background: #fff7f3; }
+.narrative-confidence > span { color: #a44732; }
+.narrative-confidence p { color: #704235; }
+.recorded-source { margin-top: 10px; }
+.recorded-source > summary { width: fit-content; cursor: pointer; color: var(--muted); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.recorded-source > summary::marker { color: var(--signal); }
+.recorded-source .intent-card { margin-top: 8px; }
 
 @media (max-width: 620px) {
   .masthead { padding: 24px 20px; }
