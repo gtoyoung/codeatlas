@@ -48,3 +48,30 @@ test('부모 폴더가 없는 로컬 데이터 경로를 초기화한다', async
 
   assert.deepEqual(await store.listRepositories(), []);
 });
+
+test('분석 질문 이력을 생성 순서로 다시 읽는다', async (t) => {
+  const store = await createStore('memory://');
+  t.after(() => store.close());
+  const repository = await store.addRepository({ name: 'questions', path: 'C:\\questions', defaultRef: 'HEAD' });
+  const scan = await store.saveScan({
+    repositoryId: repository.id,
+    kind: 'working_tree',
+    targetOid: null,
+    baseOid: null,
+    manifestHash: 'manifest',
+    report: {},
+    graph: {},
+    summary: {},
+  });
+
+  const first = await store.saveQuestion({ scanId: scan.id, question: '왜 바뀌었나?', answer: { answer: '기록을 확인했습니다.' } });
+  await store.saveQuestion({ scanId: scan.id, question: '어디에 영향이 있나?', answer: { answer: '관계를 확인하세요.' } });
+  const questions = await store.listQuestions(scan.id);
+
+  assert.equal(questions.length, 2);
+  assert.equal(questions[0].id, first.id);
+  assert.equal(questions[0].scanId, scan.id);
+  assert.equal(questions[0].question, '왜 바뀌었나?');
+  assert.deepEqual(questions[0].answer, { answer: '기록을 확인했습니다.' });
+  assert.ok(questions[0].createdAt <= questions[1].createdAt);
+});

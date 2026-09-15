@@ -111,6 +111,23 @@ export async function createStore(dataDir = 'memory://') {
       return { id, scanId, question, answer };
     },
 
+    async listQuestions(scanId) {
+      const result = await db.query(
+        `SELECT id, scan_id, question, answer, created_at
+         FROM questions
+         WHERE scan_id = $1
+         ORDER BY created_at ASC, id ASC`,
+        [scanId],
+      );
+      return result.rows.map((row) => ({
+        id: row.id,
+        scanId: row.scan_id,
+        question: row.question,
+        answer: row.answer,
+        createdAt: row.created_at,
+      }));
+    },
+
     async close() {
       await db.close();
     },
