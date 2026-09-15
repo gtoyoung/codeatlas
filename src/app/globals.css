@@ -544,11 +544,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .atlas-empty-state h2 { margin: 0; color: #20242b; font-size: 22px; letter-spacing: -.03em; }
 .atlas-empty-state p { margin: 10px 0 0; color: #69717c; font-size: 13px; line-height: 1.7; }
 .atlas-analysis-layout { display: grid; grid-template-columns: minmax(0, 760px); justify-content: center; gap: 24px; padding-top: 25px; }
-.atlas-analysis-layout.inspector-visible { grid-template-columns: minmax(0, 760px) minmax(270px, 320px); justify-content: stretch; }
+.atlas-analysis-layout.inspector-visible { grid-template-columns: minmax(0, 1fr) minmax(300px, 340px); justify-content: stretch; }
 .atlas-thread { min-width: 0; }
+.atlas-analysis-layout.inspector-visible .atlas-thread { width: min(100%, 920px); justify-self: center; }
 .atlas-thread-intro { display: flex; align-items: baseline; gap: 14px; padding: 0 0 19px 44px; border-bottom: 1px solid #edf0f3; }
 .atlas-thread-intro p { margin: 0; color: #69717c; font-size: 12px; }
-.atlas-timeline { position: relative; padding: 9px 0 25px 44px; }
+.atlas-timeline { position: relative; padding: 9px 0 160px 44px; }
 .atlas-timeline::before { content: ''; position: absolute; top: 0; bottom: 0; left: 13px; width: 1px; background: #dce4ed; }
 .atlas-event { position: relative; display: grid; grid-template-columns: 1fr; padding: 18px 0 7px; }
 .atlas-event-marker { position: absolute; top: 22px; left: -44px; z-index: 1; display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid #c8d6e5; border-radius: 50%; color: #3377e8; background: #fff; font: 700 11px "Cascadia Mono", monospace; }
