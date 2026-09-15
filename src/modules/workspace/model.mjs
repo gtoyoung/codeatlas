@@ -168,3 +168,8 @@ export function buildWorkspaceTimeline(scan = {}, questions = []) {
   }
   return events;
 }
+
+export function buildConversationTimeline(scan = {}, questions = []) {
+  return buildWorkspaceTimeline(scan, questions)
+    .filter((event) => event.kind === 'question' || event.kind === 'answer');
+}

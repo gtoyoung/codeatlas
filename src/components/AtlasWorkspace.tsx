@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 
-import { buildEvidenceGroups, buildWorkspaceTimeline } from '@/modules/workspace/model.mjs';
+import { buildConversationTimeline, buildEvidenceGroups } from '@/modules/workspace/model.mjs';
 import CommitTimeline from './CommitTimeline';
 import PullRequestInbox from './PullRequestInbox';
 import AnalysisThread from './AnalysisThread';
@@ -36,10 +36,10 @@ export default function AtlasWorkspace({ suggestedPath }: { suggestedPath: strin
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [scan, setScan] = useState<Scan | null>(null);
   const [questions, setQuestions] = useState<QuestionRecord[]>([]);
-  const [liveQuestion, setLiveQuestion] = useState<QuestionRecord | null>(null);
+  const [liveQuestions, setLiveQuestions] = useState<QuestionRecord[]>([]);
   const [path, setPath] = useState(suggestedPath);
   const [mode, setMode] = useState<'working_tree' | 'commit'>('working_tree');
-  const [question, setQuestion] = useState('작성자는 왜 이 커밋이나 PR을 만들었나? 기록과 코드 근거를 나눠 설명해줘.');
+  const [question, setQuestion] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [workspace, setWorkspace] = useState<Workspace>('overview');
@@ -51,8 +51,8 @@ export default function AtlasWorkspace({ suggestedPath }: { suggestedPath: strin
     [repositories, selectedId],
   );
   const timeline = useMemo(
-    () => scan ? buildWorkspaceTimeline(scan, liveQuestion ? [...questions, liveQuestion] : questions) as TimelineEvent[] : [],
-    [liveQuestion, questions, scan],
+    () => scan ? buildConversationTimeline(scan, [...questions, ...liveQuestions]) as TimelineEvent[] : [],
+    [liveQuestions, questions, scan],
   );
   const evidenceGroups = useMemo(() => scan ? buildEvidenceGroups(scan) : [], [scan]);
 
@@ -64,7 +64,7 @@ export default function AtlasWorkspace({ suggestedPath }: { suggestedPath: strin
     setSelectedId(nextId);
     setScan(nextScan);
     setQuestions([]);
-    setLiveQuestion(null);
+    setLiveQuestions([]);
     if (nextScan && nextScan.kind !== 'pull_request') setMode(nextScan.kind);
   }
 
@@ -113,7 +113,7 @@ export default function AtlasWorkspace({ suggestedPath }: { suggestedPath: strin
     if (!selected) return;
     setBusy(true);
     setError('');
-    setLiveQuestion(null);
+    setLiveQuestions([]);
     try {
       const isPullRequest = scan?.kind === 'pull_request';
       const pullKey = isPullRequest ? (scan?.report.metadata?.id ?? scan?.report.metadata?.number) : null;
@@ -136,7 +136,7 @@ export default function AtlasWorkspace({ suggestedPath }: { suggestedPath: strin
 
   async function analyzeCommit(commit: CommitSelection) {
     if (!selected) return;
-    setBusy(true); setError(''); setLiveQuestion(null);
+    setBusy(true); setError(''); setLiveQuestions([]);
     try {
       const body = await readJson(await fetch(`/api/repositories/${selected.id}/scan`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -151,7 +151,7 @@ export default function AtlasWorkspace({ suggestedPath }: { suggestedPath: strin
 
   async function analyzePullRequest(pullRequest: PullRequestSelection) {
     if (!selected || (pullRequest.id == null && pullRequest.number == null)) return;
-    setBusy(true); setError(''); setLiveQuestion(null);
+    setBusy(true); setError(''); setLiveQuestions([]);
     try {
       const key = pullRequest.id ?? pullRequest.number;
       const body = await readJson(await fetch(`/api/repositories/${selected.id}/pull-requests/${key}/scan`, {
@@ -174,13 +174,13 @@ export default function AtlasWorkspace({ suggestedPath }: { suggestedPath: strin
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: questionText.trim() }),
       }));
-      setLiveQuestion({
+      setLiveQuestions((current) => [...current, {
         id: `live-${Date.now()}`,
         scanId: scan.id,
         question: questionText.trim(),
         answer: body.answer as Answer,
         createdAt: new Date().toISOString(),
-      });
+      }]);
       setQuestion('');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '답변을 생성하지 못했습니다.');
@@ -193,7 +193,7 @@ export default function AtlasWorkspace({ suggestedPath }: { suggestedPath: strin
     setSelectedId(repository.id);
     setScan(repository.latestScan);
     setQuestions([]);
-    setLiveQuestion(null);
+    setLiveQuestions([]);
     setSelectedEvidenceId(null);
     setWorkspace('overview');
     if (repository.latestScan && repository.latestScan.kind !== 'pull_request') setMode(repository.latestScan.kind);
@@ -245,6 +245,7 @@ export default function AtlasWorkspace({ suggestedPath }: { suggestedPath: strin
             <div className={inspectorOpen ? 'atlas-analysis-layout inspector-visible' : 'atlas-analysis-layout'}>
               <AnalysisThread
                 events={timeline}
+                subject={scanTitle}
                 scopeLabel={scopeLabel}
                 question={question}
                 busy={busy}

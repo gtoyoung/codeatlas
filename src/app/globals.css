@@ -673,3 +673,35 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 @media (prefers-reduced-motion: reduce) {
   .atlas-inspector { transition: none; }
 }
+
+/* Conversation-first center: static scan summaries stay in the inspector. */
+.atlas-thread { display: flex; flex-direction: column; min-height: calc(100vh - 110px); }
+.atlas-conversation { flex: 1; min-height: 390px; padding: 28px 0 12px; }
+.atlas-welcome-message { display: flex; gap: 14px; max-width: 760px; margin: 0 auto; padding: 18px 0 24px; }
+.atlas-welcome-avatar { flex: 0 0 auto; display: grid; place-items: center; width: 31px; height: 31px; border-radius: 50%; color: #fff; background: #3377e8; font: 700 11px "Cascadia Mono", monospace; }
+.atlas-welcome-body { min-width: 0; }
+.atlas-welcome-body h2 { margin: 10px 0 0; color: #20242b; font-size: clamp(20px, 2.6vw, 29px); line-height: 1.25; letter-spacing: -.04em; }
+.atlas-welcome-body > p { max-width: 650px; margin: 10px 0 0; color: #5e6874; font-size: 13px; line-height: 1.7; }
+.atlas-welcome-context { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
+.atlas-welcome-context span { padding: 5px 8px; border: 1px solid #dce5ef; border-radius: 5px; color: #6f7d8c; background: #f8fafc; font: 10px "Cascadia Mono", monospace; }
+.atlas-welcome-context span:first-child { color: #3377e8; background: #f3f7ff; }
+.atlas-conversation-history { position: relative; max-width: 760px; margin: 0 auto; padding: 5px 0 40px 44px; border-top: 1px solid #edf0f3; }
+.atlas-conversation-history::before { content: ''; position: absolute; top: 0; bottom: 0; left: 13px; width: 1px; background: #dce4ed; }
+.atlas-conversation-history .atlas-event { padding-top: 22px; }
+.atlas-conversation-empty { max-width: 760px; margin: 10px auto 0; padding: 18px 0 18px 45px; color: #8a949f; font-size: 12px; }
+.atlas-composer { margin-left: 44px; }
+
+@media (max-width: 560px) {
+  .atlas-welcome-message, .atlas-conversation-history, .atlas-conversation-empty { max-width: none; }
+  .atlas-welcome-message { padding-top: 10px; }
+  .atlas-conversation-history { padding-left: 34px; }
+  .atlas-conversation-history::before { left: 10px; }
+  .atlas-conversation-history .atlas-event-marker { left: -34px; }
+  .atlas-conversation-empty { padding-left: 34px; }
+  .atlas-composer { margin-left: 34px; }
+}
+
+/* Answers read like assistant messages; their detailed sections remain in the inspector. */
+.atlas-answer-copy { margin-top: 10px; padding: 13px 15px; border-left: 3px solid #3377e8; border-radius: 0 7px 7px 0; background: #f6f9fe; }
+.atlas-answer-copy p { margin: 0; color: #343e4a; font-size: 14px; line-height: 1.7; white-space: pre-wrap; }
+.atlas-answer-copy .atlas-evidence-links { margin-top: 10px; }

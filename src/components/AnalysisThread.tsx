@@ -3,6 +3,7 @@ import type { TimelineEvent } from './workspace-types';
 
 type AnalysisThreadProps = {
   events: TimelineEvent[];
+  subject: string;
   scopeLabel: string;
   question: string;
   busy: boolean;
@@ -33,65 +34,46 @@ function AnswerEvent({ event, onEvidenceSelect }: { event: TimelineEvent; onEvid
   const answer = event.answer;
   if (!answer) return null;
   const sections = answer.sections?.length ? answer.sections : [{ key: 'answer', label: '답변', text: answer.answer, citations: answer.citations }];
+  const citationIds = [...new Set([...(answer.citations ?? []), ...sections.flatMap((section) => section.citations ?? [])])];
   return (
     <article className={`atlas-event atlas-answer-event answer-${answer.support}`} aria-live="polite">
       <div className="atlas-event-marker answer-marker">A</div>
       <div className="atlas-event-body">
         <div className="atlas-event-meta"><span>{event.title}</span><b>{supportLabel(answer.support)}</b><small>{modeLabel(answer.mode)}</small></div>
-        <div className="atlas-answer-sections">
-          {sections.map((section, index) => <section className="atlas-answer-section" data-kind={section.key} key={`${section.key}-${index}`}>
-            <h4>{section.label}</h4>
-            {section.items?.length ? <ul>{section.items.map((item, itemIndex) => <li key={`${section.key}-${itemIndex}`}>{item}</li>)}</ul> : <p>{section.text}</p>}
-            <EvidenceLinks ids={section.citations} onSelect={onEvidenceSelect} />
-          </section>)}
+        <div className="atlas-answer-copy">
+          <p>{answer.answer}</p>
+          <EvidenceLinks ids={citationIds} onSelect={onEvidenceSelect} />
         </div>
       </div>
     </article>
   );
 }
 
-export default function AnalysisThread({ events, scopeLabel, question, busy, onQuestionChange, onAsk, onEvidenceSelect }: AnalysisThreadProps) {
+export default function AnalysisThread({ events, subject, scopeLabel, question, busy, onQuestionChange, onAsk, onEvidenceSelect }: AnalysisThreadProps) {
   return (
-    <section className="atlas-thread" aria-label="분석 대화">
-      <div className="atlas-thread-intro"><span className="atlas-eyebrow">ANALYSIS THREAD</span><p>변경의 이유부터 영향과 확인할 부분까지 시간 순서로 읽습니다.</p></div>
-      <div className="atlas-timeline">
-        {events.map((event) => {
-          if (event.kind === 'snapshot') return <article className="atlas-event" key={event.id}>
-            <div className="atlas-event-marker">G</div>
-            <div className="atlas-event-body">
-              <div className="atlas-event-meta"><span>{event.title}</span><small>Git 기록</small></div>
-              <p className="atlas-event-lead">{event.text}</p>
-              {event.metrics && <div className="atlas-metrics"><span><b>{event.metrics.files}</b>변경 파일</span><span><b>+{event.metrics.additions}</b>추가</span><span><b>−{event.metrics.deletions}</b>삭제</span></div>}
-              <EvidenceLinks ids={event.evidenceIds} onSelect={onEvidenceSelect} />
-            </div>
-          </article>;
-          if (event.kind === 'narrative') return <article className="atlas-event" key={event.id}>
-            <div className="atlas-event-marker narrative-marker">A</div>
-            <div className="atlas-event-body">
-              <div className="atlas-event-meta"><span>{event.title}</span><small>Git · 코드 근거</small></div>
-              <div className="atlas-story-card">
-                <h2>{event.narrative?.why}</h2>
-                <div className="atlas-story-grid"><section><span>무엇을 바꿨나</span><p>{event.narrative?.what}</p></section><section><span>프로젝트에 어떤 변화인가</span><p>{event.narrative?.impact}</p></section></div>
-                <div className="atlas-story-boundary"><span>확인 경계</span><p>{event.narrative?.confidence}</p></div>
-              </div>
-              <EvidenceLinks ids={event.evidenceIds} onSelect={onEvidenceSelect} />
-            </div>
-          </article>;
-          if (event.kind === 'impact') return <article className="atlas-event" key={event.id}>
-            <div className="atlas-event-marker impact-marker">↳</div>
-            <div className="atlas-event-body">
-              <div className="atlas-event-meta"><span>{event.title}</span><small>정적 관계</small></div>
-              <p className="atlas-event-lead">변경 파일과 연결된 코드를 확인하세요. 동적 연결은 실행 검증이 필요합니다.</p>
-              <div className="atlas-impact-events">{event.items?.slice(0, 8).map((item) => <button type="button" className="atlas-impact-item" key={item.id} onClick={() => onEvidenceSelect(item.id)}><span>{item.label}</span><strong>{item.text}</strong><small>{item.path ?? '위치 정보 없음'}{item.line ? `:${item.line}` : ''}</small></button>)}</div>
-            </div>
-          </article>;
-          if (event.kind === 'question') return <article className="atlas-event atlas-question-event" key={event.id}>
-            <div className="atlas-event-marker question-marker">Q</div>
-            <div className="atlas-event-body"><div className="atlas-event-meta"><span>질문</span><small>{event.createdAt ? new Date(event.createdAt).toLocaleString('ko-KR') : ''}</small></div><p className="atlas-question-text">{event.question}</p></div>
-          </article>;
-          if (event.kind === 'answer') return <AnswerEvent key={event.id} event={event} onEvidenceSelect={onEvidenceSelect} />;
-          return null;
-        })}
+    <section className="atlas-thread" aria-label={`${subject} 분석 대화`}>
+      <div className="atlas-thread-intro"><span className="atlas-eyebrow">ANALYSIS THREAD</span><p>커밋과 PR에 대해 질문하고, 필요한 근거만 옆에서 확인하세요.</p></div>
+      <div className="atlas-conversation">
+        <article className="atlas-welcome-message">
+          <div className="atlas-welcome-avatar">A</div>
+          <div className="atlas-welcome-body">
+            <div className="atlas-event-meta"><span>Code Atlas</span><small>분석 도우미</small></div>
+            <h2>이 변경에 대해 무엇이 궁금한가요?</h2>
+            <p>변경을 만든 이유, 실제로 바뀐 코드, 프로젝트에 미칠 영향을 질문해 주세요. 답변은 Git·PR 기록과 코드 근거를 구분해 설명합니다.</p>
+            <div className="atlas-welcome-context"><span>{scopeLabel}</span><span>근거는 오른쪽 검사기에서 확인</span></div>
+          </div>
+        </article>
+        {events.length > 0 && <div className="atlas-conversation-history">
+          {events.map((event) => {
+            if (event.kind === 'question') return <article className="atlas-event atlas-question-event" key={event.id}>
+              <div className="atlas-event-marker question-marker">Q</div>
+              <div className="atlas-event-body"><div className="atlas-event-meta"><span>질문</span><small>{event.createdAt ? new Date(event.createdAt).toLocaleString('ko-KR') : ''}</small></div><p className="atlas-question-text">{event.question}</p></div>
+            </article>;
+            if (event.kind === 'answer') return <AnswerEvent key={event.id} event={event} onEvidenceSelect={onEvidenceSelect} />;
+            return null;
+          })}
+        </div>}
+        {events.length === 0 && <p className="atlas-conversation-empty">아래 입력창에 첫 질문을 남기면 이곳에서 대화를 이어갑니다.</p>}
       </div>
       <QuestionComposer question={question} busy={busy} scopeLabel={scopeLabel} onChange={onQuestionChange} onSubmit={onAsk} />
     </section>

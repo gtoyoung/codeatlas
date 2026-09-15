@@ -104,11 +104,17 @@ export async function createStore(dataDir = 'memory://') {
 
     async saveQuestion({ scanId, question, answer }) {
       const id = randomUUID();
-      await db.query(
-        'INSERT INTO questions (id, scan_id, question, answer) VALUES ($1, $2, $3, $4::jsonb)',
-        [id, scanId, question, JSON.stringify(answer)],
+      const latest = await db.query(
+        'SELECT MAX(created_at) AS created_at FROM questions WHERE scan_id = $1',
+        [scanId],
       );
-      return { id, scanId, question, answer };
+      const previousTime = latest.rows[0]?.created_at ? new Date(latest.rows[0].created_at).getTime() : 0;
+      const createdAt = new Date(Math.max(Date.now(), previousTime + 1)).toISOString();
+      await db.query(
+        'INSERT INTO questions (id, scan_id, question, answer, created_at) VALUES ($1, $2, $3, $4::jsonb, $5)',
+        [id, scanId, question, JSON.stringify(answer), createdAt],
+      );
+      return { id, scanId, question, answer, createdAt };
     },
 
     async listQuestions(scanId) {

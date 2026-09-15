@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildEvidenceGroups, buildWorkspaceTimeline } from '../src/modules/workspace/model.mjs';
+import { buildConversationTimeline, buildEvidenceGroups, buildWorkspaceTimeline } from '../src/modules/workspace/model.mjs';
 
 const scan = {
   id: 'scan-1',
@@ -59,4 +59,16 @@ test('근거 검사기는 기록·변경·관계·확인을 분리하고 내부 
   assert.match(groups[2].items[0].text, /src\/routes\.ts.*src\/replies\.ts/);
   assert.doesNotMatch(groups[2].items[0].text, /snapshot:file/);
   assert.match(groups[3].items[0].text, /src\/dynamic\.ts/);
+});
+
+test('대화 화면은 질문과 답변만 남기고 분석 요약은 근거 영역으로 보낸다', () => {
+  const conversation = buildConversationTimeline(scan, [{
+    id: 'question-1',
+    question: '이 커밋은 왜 필요했나?',
+    answer: { answer: '중복 답글을 막기 위해 필요했습니다.', citations: ['context-commit'], support: 'supported', mode: 'deterministic' },
+    createdAt: '2026-09-15T00:00:00.000Z',
+  }]);
+
+  assert.deepEqual(conversation.map((event) => event.kind), ['question', 'answer']);
+  assert.equal(conversation[0].question, '이 커밋은 왜 필요했나?');
 });
