@@ -50,7 +50,7 @@ assert.deepEqual(questions[0], { id: saved.id, scanId: scan.id, question: '왜 �
 ### Task 2: Workspace 화면 모델
 
 **Files:**
-- Create: `src/components/workspace-model.ts`
+- Create: `src/modules/workspace/model.mjs`
 - Test: `tests/workspace-model.test.mjs`
 
 **Interfaces:**
